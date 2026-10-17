@@ -1,6 +1,6 @@
 # Replay: project definition
 
-Status: product specification. The `.replay` file workflow below was agreed on 2026-10-17 and is planned, not yet implemented.
+Status: product specification. The `.replay` file workflow below was agreed and implemented on 2026-10-17; verification coverage is tracked in PLAN.md.
 
 This document defines what Replay is intended to do. It is the product source of truth. [PLAN.md](docs/PLAN.md) defines how the MVP will be built and must follow this definition where the two disagree. This document does not describe functionality already implemented.
 

@@ -6,24 +6,26 @@ import { EditorCaptureBridge } from './capture/editor-extension';
 import { RecordingControls, reportRecordingError } from './ui/recording-controls';
 import { ReplayWorkspace } from './ui/replay-workspace';
 import { registerCommands } from './commands/register-commands';
-import { ExportWorkspace } from './ui/export-workspace';
+import { ArtifactPublisher } from './artifacts/publisher';
+import { ObsidianArtifactAdapter } from './artifacts/obsidian-adapter';
 
 export default class ReplayPlugin extends Plugin {
 	onload(): void {
-		const store = new RecordingStore(new ObsidianStorageAdapter(this.app.vault.adapter), recordingRoot(this));
-		const controller = new RecordingController(store, reportRecordingError, browserScheduler);
+		const root = recordingRoot(this);
+		const storage = new ObsidianStorageAdapter(this.app.vault.adapter);
+		const store = new RecordingStore(storage, root);
+		const artifacts = new ArtifactPublisher(new ObsidianArtifactAdapter(this, storage, root));
+		const controller = new RecordingController(store, reportRecordingError, browserScheduler, undefined, undefined, artifacts);
 		const bridge = new EditorCaptureBridge(controller);
 		this.registerEditorExtension(bridge.extension);
-		const replay = new ReplayWorkspace(this, controller, browserScheduler, (path) => exports.open(path));
-		const exports = new ExportWorkspace(this, controller, (path) => replay.pause(path));
-		const controls = new RecordingControls(this, controller, bridge, (path) => { void replay.open(path); }, (path) => exports.open(path));
-		registerCommands(this, controls, replay, exports);
+		const replay = new ReplayWorkspace(this, controller, store, artifacts, browserScheduler);
+		const controls = new RecordingControls(this, controller, bridge, replay);
+		registerCommands(this, controls, replay);
 		this.registerEvent(this.app.vault.on('rename', (file, oldPath) => {
 			void controller.rename(oldPath, file.path).catch(() => undefined);
 		}));
 		this.register(() => {
 			controls.dispose();
-			exports.dispose();
 			replay.dispose();
 			bridge.dispose();
 			void controller.dispose();

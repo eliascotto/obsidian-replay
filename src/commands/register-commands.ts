@@ -1,20 +1,11 @@
+import { registerRecordingCommands } from './recording-commands';
 import type { Plugin } from 'obsidian';
 import type { ReplayWorkspace } from '../ui/replay-workspace';
 import type { RecordingControls } from '../ui/recording-controls';
-import type { ExportWorkspace } from '../ui/export-workspace';
 
-export function registerCommands(plugin: Plugin, controls: RecordingControls, replay: ReplayWorkspace, exports: ExportWorkspace): void {
+export function registerCommands(plugin: Plugin, controls: RecordingControls, replay: ReplayWorkspace): void {
 	plugin.addCommand({
-		id: 'export-recording', name: 'Export recording',
-		checkCallback: (checking) => {
-			if (!exports.canOpen()) return false;
-			if (!checking) exports.openCurrent();
-			return true;
-		},
-	});
-	plugin.addCommand({
-		id: 'open-history',
-		name: 'Open recording history',
+		id: 'export-recording', name: 'Refresh recording file',
 		checkCallback: (checking) => {
 			if (!replay.canOpen()) return false;
 			if (!checking) replay.openCurrent();
@@ -22,19 +13,13 @@ export function registerCommands(plugin: Plugin, controls: RecordingControls, re
 		},
 	});
 	plugin.addCommand({
-		id: 'start-recording', name: 'Start recording',
+		id: 'open-history',
+		name: 'Open recording file',
 		checkCallback: (checking) => {
-			if (!controls.canStart()) return false;
-			if (!checking) controls.start();
+			if (!replay.canOpen()) return false;
+			if (!checking) replay.openCurrent();
 			return true;
 		},
 	});
-	plugin.addCommand({
-		id: 'stop-recording', name: 'Stop recording / retry save',
-		checkCallback: (checking) => {
-			if (!controls.canStop()) return false;
-			if (!checking) controls.stop();
-			return true;
-		},
-	});
+	registerRecordingCommands(plugin, controls);
 }

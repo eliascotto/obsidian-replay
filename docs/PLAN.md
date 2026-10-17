@@ -1,12 +1,12 @@
 # Replay: MVP implementation plan
 
-[PROJECT.md](../PROJECT.md) defines the product and takes precedence over this plan. This document is the single implementation plan. The `.replay` file workflow agreed on 2026-10-17 is the next implementation target (milestone 6). Milestones 1–5 retain their completed checklists as implementation history; their manual export dialog and note-backed replay entry points are superseded by milestone 6. No milestone 6 work is implemented by writing this plan.
+[PROJECT.md](../PROJECT.md) defines the product and takes precedence over this plan. This document is the single implementation plan. The `.replay` file workflow agreed on 2026-10-17 is implemented in milestone 6. Milestones 1–5 retain their completed checklists as implementation history; their manual export dialog and note-backed replay entry points are superseded by milestone 6. Milestone 6 records the new implementation and its remaining device checks.
 
 ## Current state and delivery target
 
 Milestones 1–5 have implemented code and passing automated checks: the portable format/engine, explicit recording controls, editor capture, local persistence, read-only timeline/playback, Doomed highlighting, portable export, and release metadata/artifact gates. Desktop smoke tests and isolated export verification passed; the full desktop/mobile/minimum-version matrix remains open. The MVP is not yet fully verified or release-ready.
 
-Deliver this next journey: open a Markdown note → Start recording → create its sibling `.replay` file → write → Stop and verify the updated file → select that file in Files to play/explore it → copy/share the file directly. Resume continues the same recording and updates the same managed file.
+The current workflow is: open a Markdown note → Start recording → create its sibling `.replay` file → write → Stop and verify the updated file → select that file in Files to play/explore it → copy/share the file directly. Resume continues the same recording and updates the same managed file.
 
 The MVP must provide:
 
@@ -51,7 +51,7 @@ src/
     controller.ts
     coordinator.ts
     doomed.ts
-  artifacts/             # Planned in milestone 6; replaces the export UI workflow.
+  artifacts/             # Milestone 6; replaces the export UI workflow.
     paths.ts
     registry.ts
     publisher.ts
@@ -82,7 +82,7 @@ Use npm, TypeScript strict mode, and esbuild. Add only the direct CodeMirror dep
 
 ### Version 1 data shape
 
-Use a single JSON document. The next implementation names it `<note-name>.replay`; existing `.replay.json` files retain the same version 1 payload and remain legacy artifacts:
+Use a single JSON document. The current implementation names it `<note-name>.replay`; existing `.replay.json` files retain the same version 1 payload and remain legacy artifacts:
 
 ```ts
 interface RecordingFile {
@@ -802,7 +802,7 @@ Milestone 5 is complete when a stopped recording can be exported to one verified
 
 ### 6. Native `.replay` files and simpler recording controls
 
-Status: planned on 2026-10-17. All tasks below are unchecked. This milestone implements the revised product definition; it does not replace the working capture/reconstruction engine or declare the outstanding device checks complete.
+Status: implemented on 2026-10-17, with automated and macOS/Obsidian 1.13.7 smoke verification. The remaining extended device/minimum-version matrix is explicitly unchecked below. The capture/reconstruction engine is retained.
 
 #### Agreed experience and publication boundaries
 
@@ -829,7 +829,7 @@ Keep local capture storage as the durable append log and use `.replay` as the po
 | `src/artifacts/obsidian-adapter.ts` (new) | Visible file operations through `Vault.create`, `Vault.read`, `Vault.process`, and file-manager rename APIs. Keep internal hidden storage on its existing adapter. |
 | `src/artifacts/recording-artifact.ts` (moved/reused) | Pure preparation and verification from `src/export/recording-export.ts`, using the existing parser and serializer. |
 | `src/recording/controller.ts`, `replay-access.ts` | Immutable publication boundary after journal flush; same-recording capture exclusion; idempotent retry; relevant source/recording lifecycle notifications. |
-| `src/replay/coordinator.ts`, `types.ts` | Load a validated portable file with a generation/revision guard instead of requiring `stoppedSnapshot(notePath)` for playback. |
+| `src/replay/file-controller.ts`, `types.ts` | Load a validated portable file with a generation/revision guard instead of requiring `stoppedSnapshot(notePath)` for playback. The older pure coordinator remains covered as a stopped-snapshot consumer, not the registered file player. |
 | `src/ui/replay-view.ts`, `replay-workspace.ts` | Native `FileView` for `.replay`, per-view players, file state/events, icon, invalid-file feedback, and legacy workspace-state migration. |
 | `src/ui/recording-controls.ts`, `src/commands/register-commands.ts` | Remove header actions, retain status and alternative recording controls, preserve command IDs, and register configurable Start/Stop shortcuts. |
 | `src/main.ts` | Compose services and register `.replay`/view/lifecycle handlers; no feature logic in the entry point. |
@@ -838,81 +838,93 @@ Retire `src/ui/export-modal.ts`, `export-workspace.ts`, and the obsolete destina
 
 #### Task 6.1 — Define portable-file ownership and naming
 
-- [ ] Document `folder/Note.md` → `folder/Note.replay`, replacing only the final Markdown extension. A root note produces a root recording file. Do not add timestamps, numbered suffixes, or another output-folder setting to the automatic path.
-- [ ] Register only `replay` with `Plugin.registerExtensions(['replay'], REPLAY_VIEW_TYPE)` after registering its view. Do not register `json`, override Markdown/Canvas, or depend on **Detect all file extensions**.
-- [ ] Keep `format: 'obsidian-replay'`, `formatVersion: 1`, and existing canonical JSON serialization. Put no local ownership/path metadata in the portable payload.
-- [ ] Persist a small, versioned ownership registry beside the existing local index. A matching basename, parseable JSON, or identical endpoint alone never establishes ownership of an existing file.
-- [ ] Before replacing an owned file, verify its full last-published content fingerprint and identity. For the final `Vault.process` callback, compare its current bytes with the bytes just checked; reject intervening external changes instead of overwriting them.
-- [ ] Preserve any unowned, malformed, imported, or externally modified destination. Show a concise path-specific error asking the user to move/rename the conflicting file and retry; keep the required canonical destination rather than silently selecting another name.
+- [x] Document `folder/Note.md` → `folder/Note.replay`, replacing only the final Markdown extension. A root note produces a root recording file. Do not add timestamps, numbered suffixes, or another output-folder setting to the automatic path.
+- [x] Register only `replay` with `Plugin.registerExtensions(['replay'], REPLAY_VIEW_TYPE)` after registering its view. Do not register `json`, override Markdown/Canvas, or depend on **Detect all file extensions**.
+- [x] Keep `format: 'obsidian-replay'`, `formatVersion: 1`, and existing canonical JSON serialization. Put no local ownership/path metadata in the portable payload.
+- [x] Persist a small, versioned ownership registry beside the existing local index. A matching basename, parseable JSON, or identical endpoint alone never establishes ownership of an existing file.
+- [x] Before replacing an owned file, verify its full last-published content fingerprint and identity. For the final `Vault.process` callback, compare its current bytes with the bytes just checked; reject intervening external changes instead of overwriting them.
+- [x] Preserve any unowned, malformed, imported, or externally modified destination. Show a concise path-specific error asking the user to move/rename the conflicting file and retry; keep the required canonical destination rather than silently selecting another name.
 
 Deliverable: an unambiguous path/ownership contract with fixtures for collisions and external changes.
 
 #### Task 6.2 — Publish automatically without losing capture durability
 
-- [ ] On first Start, persist the initial recording, reserve publication ownership, and create/verify its initial-only `.replay` file. Buffer editor changes throughout asynchronous initialization. Do not recreate/rewrite an existing published file on an unchanged Resume.
-- [ ] On Stop, close capture immediately, await initialization and rename work, flush accepted steps, and take an immutable recording/revision snapshot for publication. Add this boundary inside the stop workflow; do not temporarily report `stopped` merely to call today's `stoppedSnapshot()` and enable playback too early.
-- [ ] Serialize once per publication. Create if absent; update only the unchanged, locally owned artifact. Use the Vault API so the file is indexed and visible to Obsidian. Recheck recording identity, path, revision, and ownership at commit time.
-- [ ] Read back the saved bytes and reuse exact JSON comparison, full parse/validation, initial text, step-count, and endpoint verification before marking the publication complete. A zero-edit/empty recording is valid.
-- [ ] Serialize publication per recording and destination, including overlapping Stop/retry, background repair, and rename work. A stale snapshot must never replace a newer file. Duplicate Stop/retry joins the same operation without duplicate history or files.
-- [ ] Report **Recording stopped** only after successful history and file persistence. If only publication fails, retain the durable log and pending publication, keep the player disabled for that local recording, and let the existing Stop/retry action finish without recapturing text.
-- [ ] Keep the prior valid artifact/history recoverable on write/readback/registry failure; do not blindly delete or roll back a file that may have been edited externally. Record write intent so a crash between file creation and registry commit can be reconciled by exact content/identity verification.
-- [ ] After restart, recording remains stopped. Reconcile pending publication from the last valid durable journal, not unsaved memory. Attempt a best-effort final publication on normal unload, with no promise that asynchronous unload work completes.
-- [ ] Do no filesystem I/O in editor transaction callbacks and no full JSON publication per keystroke or periodic append flush. Reuse the current buffered journal and queue limits for large notes/many steps.
+- [x] On first Start, persist the initial recording, reserve publication ownership, and create/verify its initial-only `.replay` file. Buffer editor changes throughout asynchronous initialization. Do not recreate/rewrite an existing published file on an unchanged Resume.
+- [x] On Stop, close capture immediately, await initialization and rename work, flush accepted steps, and take an immutable recording/revision snapshot for publication. Add this boundary inside the stop workflow; do not temporarily report `stopped` merely to call today's `stoppedSnapshot()` and enable playback too early.
+- [x] Serialize once per publication. Create if absent; update only the unchanged, locally owned artifact. Use the Vault API so the file is indexed and visible to Obsidian. Recheck recording identity, path, revision, and ownership at commit time.
+- [x] Read back the saved bytes and reuse exact JSON comparison, full parse/validation, initial text, step-count, and endpoint verification before marking the publication complete. A zero-edit/empty recording is valid.
+- [x] Serialize publication per recording and destination, including overlapping Stop/retry, background repair, and rename work. A stale snapshot must never replace a newer file. Duplicate Stop/retry joins the same operation without duplicate history or files.
+- [x] Report **Recording stopped** only after successful history and file persistence. If only publication fails, retain the durable log and pending publication, keep the player disabled for that local recording, and let the existing Stop/retry action finish without recapturing text.
+- [x] Keep the prior valid artifact/history recoverable on write/readback/registry failure; do not blindly delete or roll back a file that may have been edited externally. Record write intent so a crash between file creation and registry commit can be reconciled by exact content/identity verification.
+- [x] After restart, recording remains stopped. Reconcile pending publication from the last valid durable journal, not unsaved memory. Attempt a best-effort final publication on normal unload, with no promise that asynchronous unload work completes.
+- [x] Do no filesystem I/O in editor transaction callbacks and no full JSON publication per keystroke or periodic append flush. Reuse the current buffered journal and queue limits for large notes/many steps.
 
 Deliverable: Start creates the visible file, Stop updates it, and errors/restarts cannot silently discard captured edits or overwrite another artifact.
 
 #### Task 6.3 — Open the artifact as a native read-only file view
 
-- [ ] Convert `ReplayView` from `ItemView` to `FileView`, retaining `replay-history` as the registered view type. Use native file state (`file`) and implement file load/unload/rename handling; return `history` from `getIcon()` and derive the tab title from the actual artifact basename.
-- [ ] Load and fully validate the `.replay` contents through the vault and existing parser. Construct the pure player from that data. Do not require a source Markdown `TFile`, `RecordingController.stoppedSnapshot`, or hidden index/log to play it.
-- [ ] Give each loaded file view its own player/presentation lifecycle. Remove the global singleton behavior that detaches an earlier Replay leaf when another opens. Respect ordinary tab, split-pane, deferred-view, and popout behavior.
-- [ ] Preserve the current icon-only toolbar, 0.5×/1×/2×/3×/4× speeds, thin timeline with single-step keyboard navigation, and Doomed. No title/return button, historical-Markdown tooltip, timeline/speed labels, export button, or visible step counter is reintroduced.
-- [ ] For a registry-owned recording, use explicit local association to pause/disable its players during Start, capture, Stop, and unresolved errors. After verified publication, reload paused and clamp the prior selected step to the new endpoint; invalidate Doomed caches. An unrelated copied file remains independently playable.
-- [ ] On artifact modification, pause and validate a fresh revision before replacing the player. Ignore stale asynchronous loads; show invalid/unsupported files with disabled controls and a useful message. Never display old data as if it came from a newly invalid file.
-- [ ] On file rename/move, retain native file navigation; on delete, release playback and follow native missing-file behavior. Close/unload disposes timers, pending seeks, subscriptions, caches, and file references through registered cleanup. Avoid detaching leaves on plugin unload so Obsidian can restore file tabs.
-- [ ] Keep parsing and rendering untrusted recording text safe: text nodes/highlight spans only, no interpreted recorded HTML or executable content. Validate once per loaded file revision; do not reread/reparse the complete file on every playback tick.
+- [x] Convert `ReplayView` from `ItemView` to `FileView`, retaining `replay-history` as the registered view type. Use native file state (`file`) and implement file load/unload/rename handling; return `history` from `getIcon()` and derive the tab title from the actual artifact basename.
+- [x] Load and fully validate the `.replay` contents through the vault and existing parser. Construct the pure player from that data. Do not require a source Markdown `TFile`, `RecordingController.stoppedSnapshot`, or hidden index/log to play it.
+- [x] Give each loaded file view its own player/presentation lifecycle. Remove the global singleton behavior that detaches an earlier Replay leaf when another opens. Respect ordinary tab, split-pane, deferred-view, and popout behavior.
+- [x] Preserve the current icon-only toolbar, 0.5×/1×/2×/3×/4× speeds, thin timeline with single-step keyboard navigation, and Doomed. No title/return button, historical-Markdown tooltip, timeline/speed labels, export button, or visible step counter is reintroduced.
+- [x] For a registry-owned recording, use explicit local association to pause/disable its players during Start, capture, Stop, and unresolved errors. After verified publication, reload paused and clamp the prior selected step to the new endpoint; invalidate Doomed caches. An unrelated copied file remains independently playable.
+- [x] On artifact modification, pause and validate a fresh revision before replacing the player. Ignore stale asynchronous loads; show invalid/unsupported files with disabled controls and a useful message. Never display old data as if it came from a newly invalid file.
+- [x] On file rename/move, retain native file navigation; on delete, release playback and follow native missing-file behavior. Close/unload disposes timers, pending seeks, subscriptions, caches, and file references through registered cleanup. Avoid detaching leaves on plugin unload so Obsidian can restore file tabs.
+- [x] Keep parsing and rendering untrusted recording text safe: text nodes/highlight spans only, no interpreted recorded HTML or executable content. Validate once per loaded file revision; do not reread/reparse the complete file on every playback tick.
 
 Deliverable: selecting `.replay` in Files opens the player, and the file works alone in another vault. The view/tab uses the existing Lucide `history` icon; verify the native Files presentation without adding private registry or file-explorer DOM patches.
 
 #### Task 6.4 — Remove redundant actions and add configurable shortcuts
 
-- [ ] Remove all record/replay/export buttons from the note header, keeping only the compact non-interactive recording/saving/error status. Remove export from the player and the obsolete export dialog flow.
-- [ ] Keep the ribbon Start/Stop toggle, note file-menu Start/Stop/retry, and command-palette commands. Keep stable IDs `start-recording` and `stop-recording` so user bindings survive upgrades.
-- [ ] Propose two uncommon defaults: **Mod+Alt+Shift+R** for Start and **Mod+Alt+Shift+S** for Stop/retry (**⌘⌥⇧R/S** on macOS; **Ctrl+Alt+Shift+R/S** on Windows/Linux). These are candidates, not a claim that every OS/vault leaves them unused. Check stock Obsidian, the test vault, OS-reserved shortcuts, and existing user bindings before finalizing them; never overwrite a user binding to free a key.
-- [ ] Register shortcuts through the normal command `hotkeys` field and let users change/remove them in **Settings → Hotkeys**, filtered to Replay. Do not create a second keybinding store/editor, global keyboard listeners, or edit `hotkeys.json` directly. Add clear setup instructions in the README.
-- [ ] Obsidian recommends avoiding default hotkeys because conflicts cannot be ruled out globally. The two requested defaults are an intentional exception; if the configured lint rule requires an exception, scope it to these two command definitions and explain the reason rather than disabling the rule globally.
-- [ ] Use one context resolver for ribbon/menu/commands: Start requires the intended active Markdown editor; Stop/retry may also resolve an active, locally owned `.replay` file to its capturing source. A standalone recording must not start/stop an unrelated note. Retain existing duplicate-start/stop and save-error checks.
-- [ ] Preserve `open-history` and `export-recording` IDs as compatibility commands. Route the former to the sibling file and the latter to verify/refresh that managed file when stopped; update display text to **Open recording file** and **Refresh recording file**. Do not retain a hidden second viewer or destination dialog. Remove obsolete replay/export note-menu entries.
-- [ ] Disclose in recording help/README that the automatically visible file includes deleted/superseded writing and contains changes through the last completed Stop. Keep normal recording free of a repeated confirmation dialog or success-notification spam.
+- [x] Remove all record/replay/export buttons from the note header, keeping only the compact non-interactive recording/saving/error status. Remove export from the player and the obsolete export dialog flow.
+- [x] Keep the ribbon Start/Stop toggle, note file-menu Start/Stop/retry, and command-palette commands. Keep stable IDs `start-recording` and `stop-recording` so user bindings survive upgrades.
+- [x] Propose two uncommon defaults: **Mod+Alt+Shift+R** for Start and **Mod+Alt+Shift+S** for Stop/retry (**⌘⌥⇧R/S** on macOS; **Ctrl+Alt+Shift+R/S** on Windows/Linux). These are candidates, not a claim that every OS/vault leaves them unused. Check stock Obsidian, the test vault, OS-reserved shortcuts, and existing user bindings before finalizing them; never overwrite a user binding to free a key.
+- [x] Register shortcuts through the normal command `hotkeys` field and let users change/remove them in **Settings → Hotkeys**, filtered to Replay. Do not create a second keybinding store/editor, global keyboard listeners, or edit `hotkeys.json` directly. Add clear setup instructions in the README.
+- [x] Obsidian recommends avoiding default hotkeys because conflicts cannot be ruled out globally. The two requested defaults are an intentional exception; if the configured lint rule requires an exception, scope it to these two command definitions and explain the reason rather than disabling the rule globally.
+- [x] Use one context resolver for ribbon/menu/commands: Start requires the intended active Markdown editor; Stop/retry may also resolve an active, locally owned `.replay` file to its capturing source. A standalone recording must not start/stop an unrelated note. Retain existing duplicate-start/stop and save-error checks.
+- [x] Preserve `open-history` and `export-recording` IDs as compatibility commands. Route the former to the sibling file and the latter to verify/refresh that managed file when stopped; update display text to **Open recording file** and **Refresh recording file**. Do not retain a hidden second viewer or destination dialog. Remove obsolete replay/export note-menu entries.
+- [x] Disclose in recording help/README that the automatically visible file includes deleted/superseded writing and contains changes through the last completed Stop. Keep normal recording free of a repeated confirmation dialog or success-notification spam.
 
 Deliverable: the note header is free of action buttons; recording remains accessible through the requested alternatives and native hotkey options.
 
 #### Task 6.5 — Handle rename, deletion, migration, and recovery
 
-- [ ] Source Markdown rename/move remaps the internal identity and moves its unchanged, managed `.replay` companion to the corresponding sibling path. Serialize with capture/publication, use file-manager rename APIs, and account for folder moves that already relocated both files; do not move the same artifact twice.
-- [ ] If the target companion path conflicts, keep the prior artifact and history, persist the unresolved relocation, and report a retryable error. No other file may be replaced to satisfy the same-folder rule. A source-note rename must not be rolled back by silently changing the live note.
-- [ ] If the user independently renames/moves a `.replay` artifact, detach it from automatic publication and preserve it as a portable snapshot. The next Start/Stop may create the canonical sibling if free; it must not chase and overwrite the moved copy. Source deletion likewise leaves the portable artifact intact and clears its source association.
-- [ ] If a managed `.replay` file is deleted, preserve the journal and mark publication missing. Recreate it on the next explicit Start/Stop or compatibility refresh action, not repeatedly in response to the delete event. Never recreate a deleted Markdown source.
-- [ ] Migrate legacy hidden recordings from their existing index after layout readiness, in small queued batches; validate each recording and create only absent canonical artifacts for existing Markdown sources. Do not scan all vault notes, parse every recording during `onload`, delete legacy history, or claim collisions as owned files. Persist progress and make interruption/retry idempotent.
-- [ ] Preserve old `.replay.json` exports. Their payload stays readable by the same parser; document how to copy/rename one to `.replay` without replacing another file. Do not register all `.json` files or automatically adopt external files for recording.
-- [ ] Migrate saved `replay-history` workspace state containing a Markdown `path` into native `.replay` file state. Resolve/publish its managed artifact before opening; handle missing/invalid sources without a restore loop. Opening future tabs persists the artifact path.
-- [ ] Upgrade local registry bookkeeping independently of the portable format, retaining current IDs/index mappings and existing custom Start/Stop keybindings. The dev vault must keep its build-file symlinks and vault-local `recordings/` directory.
+- [x] Source Markdown rename/move remaps the internal identity and moves its unchanged, managed `.replay` companion to the corresponding sibling path. Serialize with capture/publication, use file-manager rename APIs, and account for folder moves that already relocated both files; do not move the same artifact twice.
+- [x] If the target companion path conflicts, keep the prior artifact and history, persist the unresolved relocation, and report a retryable error. No other file may be replaced to satisfy the same-folder rule. A source-note rename must not be rolled back by silently changing the live note.
+- [x] If the user independently renames/moves a `.replay` artifact, detach it from automatic publication and preserve it as a portable snapshot. The next Start/Stop may create the canonical sibling if free; it must not chase and overwrite the moved copy. Source deletion likewise leaves the portable artifact intact and clears its source association.
+- [x] If a managed `.replay` file is deleted, preserve the journal and mark publication missing. Recreate it on the next explicit Start/Stop or compatibility refresh action, not repeatedly in response to the delete event. Never recreate a deleted Markdown source.
+- [x] Migrate legacy hidden recordings from their existing index after layout readiness, in small queued batches; validate each recording and create only absent canonical artifacts for existing Markdown sources. Do not scan all vault notes, parse every recording during `onload`, delete legacy history, or claim collisions as owned files. Persist progress and make interruption/retry idempotent.
+- [x] Preserve old `.replay.json` exports. Their payload stays readable by the same parser; document how to copy/rename one to `.replay` without replacing another file. Do not register all `.json` files or automatically adopt external files for recording.
+- [x] Migrate saved `replay-history` workspace state containing a Markdown `path` into native `.replay` file state. Resolve/publish its managed artifact before opening; handle missing/invalid sources without a restore loop. Opening future tabs persists the artifact path.
+- [x] Upgrade local registry bookkeeping independently of the portable format, retaining current IDs/index mappings and existing custom Start/Stop keybindings. The dev vault must keep its build-file symlinks and vault-local `recordings/` directory.
 
 Deliverable: existing users keep their captured history and keybindings, while existing and new recordings gain visible portable files without destructive migration.
 
 #### Task 6.6 — Verify and document the complete change
 
-- [ ] Add pure path/registry/publisher tests: initial-only creation, complete Stop, Resume, duplicate retries, initial/append/readback failures, truncated files, registry crash recovery, queued stale writes, rename races, case/path collisions, external edits, deletion, and migration interrupted/repeated.
-- [ ] Extend real controller/store integration tests to prove that captured transactions during initial publication are retained; durable log success plus publication failure is retryable; an older publication cannot overwrite a newer revision; standalone file playback never needs `stoppedSnapshot()` or a source note.
-- [ ] Preserve format/engine/Doomed and portability tests using only copied `.replay` contents. Include empty, Unicode, multiline, resumed, many-step, and large-document fixtures. Bound caches and event work; no DOM element per recorded step or historical-document copy per timeline position.
+- [x] Add pure path/registry/publisher tests: initial-only creation, complete Stop, Resume, duplicate retries, initial/append/readback failures, truncated files, registry crash recovery, queued stale writes, rename races, case/path collisions, external edits, deletion, and migration interrupted/repeated.
+- [x] Extend real controller/store integration tests to prove that captured transactions during initial publication are retained; durable log success plus publication failure is retryable; an older publication cannot overwrite a newer revision; standalone file playback never needs `stoppedSnapshot()` or a source note.
+- [x] Preserve format/engine/Doomed and portability tests using only copied `.replay` contents. Include empty, Unicode, multiline, resumed, many-step, and large-document fixtures. Bound caches and event work; no DOM element per recorded step or historical-document copy per timeline position.
 - [ ] Manually check a disposable desktop vault: visible sibling on first Start; correct paused/disabled local player during capture; complete verified file on Stop; file click/tab icon; all player controls; resume/unrecorded edits; note and folder rename; collision; edited/missing file; repeated enable/disable and restart. Verify no stale header/export actions remain.
 - [ ] Copy just a `.replay` file to an otherwise clean second vault with Replay enabled. Check native file visibility, `history` tab icon, playback/seeking/Doomed, multiple recordings open together, and no creation or mutation of a source note/internal recording session. Also check a previously exported payload renamed to `.replay`.
 - [ ] Verify default shortcut availability and editable/unassignable bindings in **Settings → Hotkeys** on each available OS. Check Start/Stop from the ribbon, note menu, palette, Markdown editor, and owned versus standalone Replay contexts. Record actual conflicts/platform limits rather than claiming universal availability.
 - [ ] Check the thin timeline with a large note and many recorded steps, light/dark themes, narrow panes, keyboard and pointer scrubbing, native Files behavior, split/popout tabs, and one mobile device. Test the declared minimum Obsidian version or document the unverified matrix; bump `minAppVersion` only if a new API requires it.
-- [ ] Update `README.md`, `docs/RECORDING_FORMAT.md`, and `docs/STORAGE.md` to distinguish the append journal, portable artifact, publication timing, recovery, visible deleted writing, sharing, icon, and shortcut configuration. Replace current manual-export instructions only when the new implementation works.
-- [ ] Run `npm test`, `npm run lint`, `npm run build`, and `npm run check:release`. Reload the linked build in the test vault and visually verify it. Keep generated bundles, vault data, and test recordings out of commits. Mark tasks complete only with corresponding implementation/verification evidence; no release/tag/publication is part of this plan.
+- [x] Update `README.md`, `docs/RECORDING_FORMAT.md`, and `docs/STORAGE.md` to distinguish the append journal, portable artifact, publication timing, recovery, visible deleted writing, sharing, icon, and shortcut configuration. Replace current manual-export instructions only when the new implementation works.
+- [x] Run `npm test`, `npm run lint`, `npm run build`, and `npm run check:release`. Reload the linked build in the test vault and visually verify it. Keep generated bundles, vault data, and test recordings out of commits. Mark tasks complete only with corresponding implementation/verification evidence; no release/tag/publication is part of this plan.
 
 Deliverable: the complete record → automatic `.replay` file → native playback → copy/share journey works with preserved durability, migration, and documented platform results.
+
+#### Verification record — 2026-10-17
+
+Automated verification: **231 tests pass**; production build, lint, release artifact checks, and `git diff --check` pass. Obsolete dialog/destination test cases were replaced with tests for automatic publication, recovery, collision protection, and native file-player behavior.
+
+The native file workflow was smoke-tested on macOS with Obsidian 1.13.7 in the existing disposable test vault using build-file symlinks. Migration created five visible `.replay` files (including empty and 65-step recordings); hashes confirmed all 22 pre-existing Markdown/history files were byte-identical afterward. File selection opened the native player with the `history` tab icon, minimal toolbar, and no export button. Stepping and Doomed were exercised.
+
+A new isolated note captured `Alpha` → `Alpha\nBeta` using the default Start/Stop shortcuts. Start created the companion; Stop produced exactly one portable edit. Resume disabled its already-open player; Stop invoked from the owned Replay tab restored paused playback at its previous selected step. A separate copied recording with no source note or ownership entry played to its endpoint. Multiple file-backed views coexisted. Both shortcuts appeared as editable/removable entries in Settings → Hotkeys, with no conflict shown in this vault. Renaming the test source through Obsidian moved its companion and retained the local recording identity. Open recording tabs and deferred tabs after reload both followed source renames, including their persisted file paths and displayed titles.
+
+Automated tests additionally cover publication-only failures with durable capture, edits buffered during initial file creation, external edits, create/readback/registry failures, lost create/rename acknowledgements, stale publications, collision protection, folder moves, detached snapshots, malformed/versioned files, asynchronous file-load disposal, and a 54,000-character initial note with 2,000 edits. The obsolete destination-dialog tests were replaced by these publication/file-player tests; portable JSON/engine/Doomed tests remain.
+
+A fully isolated second-vault manual pass, extended rename/move/collision/popout/disable-reenable matrix, iOS/Android, Windows/Linux shortcut checks, and Obsidian 1.7.2 remain unverified. These are device verification gaps, not claims of tested compatibility. No release/tag/publication was performed.
 
 #### API references and implementation order
 

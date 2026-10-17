@@ -3,9 +3,14 @@ import { RecordingSession, type Observation, type RecordingPhase } from './sessi
 import { RecordingStore } from '../storage/recording-store';
 import { remap } from '../storage/records';
 import { WriteQueue } from '../storage/write-queue';
-import { StorageError, type Scheduler } from '../storage/types';
+import { StorageError, type Scheduler, type StoredRecording } from '../storage/types';
 import type { RecordingFile } from './types';
 import { ReplayAccess, type RecordingReference, type StoppedSnapshot } from './replay-access';
+
+export interface RecordingArtifacts {
+	publish(path: string, stored: StoredRecording, ensureOnly?: boolean): Promise<void>;
+	rename(from: string, to: string): Promise<void>;
+}
 
 export class RecordingController {
 	readonly replayAccess = new ReplayAccess();
@@ -23,6 +28,7 @@ export class RecordingController {
 		private clock: Scheduler,
 		private makeId: () => string = () => crypto.randomUUID(),
 		private beforeStart: (path: string) => void = () => undefined,
+		private artifacts?: RecordingArtifacts,
 	) {}
 
 	subscribe(listener: () => void): () => void {
@@ -106,6 +112,7 @@ export class RecordingController {
 		session.queue = queue;
 		session.nextSequence += offset;
 		session.initialized = true;
+		await this.artifacts?.publish(session.path, stored, true);
 		if (session.capturing) session.phase = 'recording';
 		this.changed();
 	}
@@ -136,6 +143,17 @@ export class RecordingController {
 		await this.flushRenames();
 		await this.initialize(session);
 		await session.queue?.flush();
+		if (this.artifacts) {
+			let publishedPath: string;
+			do {
+				await this.flushRenames();
+				publishedPath = session.path;
+				const stored = await this.store.load(publishedPath);
+				if (!stored) throw new StorageError('The saved recording is missing.');
+				await this.artifacts.publish(publishedPath, stored);
+				await this.flushRenames();
+			} while (publishedPath !== session.path);
+		}
 		this.store.release(session.id);
 		session.error = undefined;
 		session.phase = 'stopped';
@@ -198,7 +216,7 @@ export class RecordingController {
 		this.sessions = moved;
 		this.replayAccess.rename(from, to);
 		this.changed();
-		return this.flushRenames().catch((error: unknown) => {
+		return this.flushRenames().then(() => this.changed()).catch((error: unknown) => {
 			for (const session of affected) this.fail(session, error);
 			if (!affected.size && !this.disposed) this.onError(to, error);
 			throw error;
@@ -219,6 +237,7 @@ export class RecordingController {
 			const next = this.renames[0];
 			if (!next) break;
 			await this.store.rename(next.from, next.to);
+			await this.artifacts?.rename(next.from, next.to);
 			this.renames.shift();
 		}
 	}

@@ -1,6 +1,6 @@
 # Replay recording format, version 1
 
-This is the portable recording contract used by [PLAN.md](PLAN.md) and the pure modules in `src/recording/`. It describes a readable, uncompressed JSON file, conventionally named `<note-name>.replay.json`. The plugin implements playback, Doomed, and stopped-recording export using this contract.
+This is the portable recording contract used by [PLAN.md](PLAN.md) and the pure modules in `src/recording/`. It describes a readable, uncompressed JSON file, named `<note-name>.replay`. Earlier `.replay.json` exports contain the same version 1 JSON and may be copied/renamed to `.replay` for playback. The plugin automatically maintains the visible recording file and opens it as a native read-only file tab.
 
 ## File structure
 
@@ -79,15 +79,15 @@ The implementation exposes `RecordingError` with a stable `code`: `format`, `ver
 
 `parseRecording` checks JSON syntax, runtime types, and full reconstruction. `serializeRecording` validates the complete recording, writes only portable fields in the order shown below, uses two-space indentation, and adds one trailing newline. No compression, Base64, or opaque binary payload is used. Export intentionally includes deleted and superseded writing.
 
-## Saving and verifying an export
+## Saving and verifying a portable file
 
-**Export recording** saves this JSON as one new `.replay.json` file in a user-visible vault location. The default is beside the note; another existing vault folder/name may be entered. Existing destinations, configuration/plugin/trash paths, absolute paths, and traversal are rejected. No native desktop dialog, Node/Electron filesystem access, upload, or external resource is required.
+Start creates `<note-folder>/<note-basename>.replay` with the complete initial state. Stop flushes the local append log and publishes the complete recording, not the currently selected replay step or Doomed spans. During capture the portable file remains at its previous published state. Avoid serializing the full recording on each keystroke.
 
-The producer reads a validated stopped snapshot, serializes only the version 1 fields, and rechecks source readiness/revision before invoking file creation. The selected replay step and Doomed spans are never export data. If writing has already started when recording resumes or the dialog closes, the saved artifact remains the captured earlier stopped revision. The plugin verifies exact readback, parses the complete JSON again, and checks its initial/endpoint text and step count before reporting success.
+The producer retains local ownership, publication sequence, content fingerprint, and pending write intent outside this format. Automatic updates require an owned file whose current bytes match its last verified publication or recoverable pending write. Visible files use the Vault API and checked replacement; collisions or external edits are preserved. Publication success requires exact readback plus complete parsing, initial-text, step-count, and endpoint verification.
 
-To verify portability, take only the exported file: call `parseRecording`, reconstruct sequences `0..steps.length` with `getStateAt`, reverse the steps with `reverseStep`, and compare any state against the reconstructed endpoint using `compareDoomed`. No note path, recording ID, storage directory, live text, or Obsidian object is an input to that consumer. Viewer comparison limits can return an unavailable highlight result without invalidating the recording itself.
+Only the portable bytes are inputs to playback: call `parseRecording`, reconstruct sequences `0..steps.length` with `getStateAt`, reverse with `reverseStep`, and compute `compareDoomed` against the final state. A source note, note path, local recording ID, index/log, or source vault is unnecessary. A recipient needs Replay enabled in Obsidian. Imported files are not adopted for further capture.
 
-Export includes earlier deleted/superseded writing and preserves literal document strings, even when those strings contain filenames or identifiers. Source-history metadata is excluded as extra fields; document contents are not redacted. This remains format version 1 and is uncompressed.
+The recording includes deleted/superseded writing and literal document strings; document contents are not redacted. No source paths, ownership metadata, executable UI, or highlight spans are added. There is no upload, compression, Base64 payload, or format-version change. Viewer comparison limits may disable highlights without invalidating a recording.
 
 ## Tested examples
 

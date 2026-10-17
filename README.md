@@ -4,16 +4,13 @@ Replay records the writing process in an Obsidian Markdown note so it can be wat
 
 ## Current implementation
 
-- Explicit **Start recording** and **Stop recording** for a Markdown note.
-- One recording per file, continued by starting again after stopping.
-- Editor transaction capture, including typing, paste, replacements, undo, and redo.
-- Local storage, exact state reconstruction, rename tracking, and save retries.
-- Read-only replay with Play/Pause, previous/next, a step timeline, and adjustable steady playback.
-- **Doomed** highlighting compares the selected step with the final recorded text.
-- **Export recording** saves one readable, uncompressed `.replay.json` file inside the vault.
-- A documented [portable recording format](docs/RECORDING_FORMAT.md) with tested parsing and serialization.
+- Explicit per-note recording with Start, Stop, and continuation across sessions.
+- A visible `<note-name>.replay` file automatically created beside each recorded note.
+- Native file tabs: select a `.replay` file in **Files** to play, step, seek, change speed, or enable **Doomed** highlighting.
+- Self-contained readable JSON: copy the `.replay` file alone into another vault with Replay enabled to watch it.
+- Local/offline operation; no uploads, telemetry, accounts, or external services.
 
-The core recording, replay, Doomed, and export features are implemented. Full device verification remains open; the separate online sharing service is outside the plugin MVP.
+The hidden append log keeps capture efficient and durable. The visible `.replay` file is the portable playback snapshot. Stop recording before copying/sharing it to include the latest session. Full device/minimum-version verification remains open; see [PLAN.md](docs/PLAN.md).
 
 ## Develop and install
 
@@ -34,27 +31,30 @@ For ongoing local development, symlink those three files individually to the mat
 ## Record a note
 
 1. Open a Markdown note in editing mode.
-2. Select **Start recording** in the recording bar above the note, or run **Replay: Start recording** from the command palette. The ribbon and current-note file menu also provide recording actions.
-3. Write and revise. The bar displays **Recording**.
-4. Select **Stop recording**. **Saving recording** changes to **Recording stopped** after the accepted steps are saved.
-5. Select **Start recording** again to continue the same recording.
+2. Select the recording icon in the left ribbon, use the note's file menu, or run **Replay: Start recording** from the command palette (**⌘P** on macOS, **Ctrl+P** on Windows/Linux).
+3. Replay captures the complete initial document and creates a sibling `.replay` file. Write and revise normally; the note header shows recording status without extra action buttons.
+4. Run **Replay: Stop recording / retry save** or select the ribbon/menu action. Stop saves the log and verifies the updated `.replay` file before showing **Recording stopped**.
+5. Start again to continue the same history. Changes made while stopped become one resume transition; their missing intermediate edits cannot be recovered.
 
-Starting includes the entire current editor document, even if no edits follow. If the document changed while stopped, resuming adds one direct transition to its current text; it does not infer the missing edits. Recording never starts automatically after a plugin or app restart.
+**The `.replay` file includes deleted and superseded writing.** It initially contains the starting text and is refreshed after each completed Stop. During recording it retains the last published snapshot, and its locally managed player is disabled. Copy/share it only after Stop finishes.
 
-Switching notes flushes pending writes without stopping their recording sessions. Each explicitly recording note keeps its own sequence. A save or capture error closes the affected note's capture gate and shows a notice; select **Retry save** / **Stop recording** to save accepted steps, then start again. Invalid saved history is preserved rather than replaced.
+Default recording shortcuts are **Mod+Alt+Shift+R** for Start and **Mod+Alt+Shift+S** for Stop/retry: **⌘⌥⇧R/S** on macOS or **Ctrl+Alt+Shift+R/S** on Windows/Linux. Change or remove either in **Settings → Hotkeys**, filtered to `Replay`. Existing customized bindings take precedence; check for OS/plugin conflicts in your setup.
 
-## Watch a recording
+A save/publication error pauses capture and preserves the durable history for retry. Resolve the reported error and select Stop/retry; do not start a new recording to recover the pending save. Switching notes flushes capture without implicitly stopping it. Recording never starts automatically after reload.
 
-After Stop finishes, select **Open replay** in the note's recording bar or file menu, or run **Replay: Open recording history**. A dedicated Replay tab opens paused at step 0 and shows the exact recorded Markdown as read-only text.
+## Watch and share a recording
 
-- Select **Play** / **Pause**, **Previous step**, or **Next step** to explore the writing.
-- Drag the **Timeline** or use its arrow keys to select a step. Manual navigation pauses playback.
-- Choose 0.5×, 1×, 2×, 3×, or 4×. At 1×, playback advances 4 recorded edits per second. A paste or resumed-document replacement counts as one step; pauses between writing sessions take no time.
-- Toggle **Doomed** to highlight historical letters that differ from the final recorded text. It works while playing or navigating and does not change the text or playback state.
-- At the endpoint, select an earlier step to play again. An initial-only recording displays step 0 with no movement available.
-- Switch to the note's tab to continue writing. Starting recording there cancels that note's replay before capture begins. After the next successful Stop, open replay again to load its updated endpoint.
+Select the `.replay` file in **Files** to open its read-only player with the history icon. For example, `Essays/Article.md` creates `Essays/Article.replay`. Each file opens as a normal Obsidian file tab; multiple recordings can be open independently.
 
-Playback never replaces the live note or adds recorded edits. Changes made while recording is stopped do not change the replay's endpoint. Closing the Replay tab or unloading the plugin cancels playback and pending timeline work.
+- Select **Play/Pause**, **Previous step**, or **Next step**, or drag the thin timeline. Manual navigation pauses playback; timeline arrow keys move by one step.
+- Choose 0.5×, 1×, 2×, 3×, or 4×. At 1× playback advances four edits per second. Original pauses take no playback time.
+- Toggle **Doomed** to highlight selected-state text that differs from the file's final recorded text.
+- Switch back to the Markdown tab to write. Playback never modifies the live note.
+- Copy/share the ordinary `.replay` file using your normal file tools. A recipient with Replay enabled can open it without your source note, hidden recording folder, or vault.
+
+There is no separate export dialog or export/open-replay button. Existing command IDs remain compatible: **Replay: Open recording file** opens the sibling; **Replay: Refresh recording file** repairs/refreshes it from stopped local history. Standalone files are playback-only and are not adopted as editable recording sessions.
+
+Hosted sharing, uploads, video export, and a standalone browser viewer are not implemented.
 
 ## Doomed highlighting
 
@@ -64,18 +64,13 @@ Unrecorded live edits do not change the comparison target. After Resume and Stop
 
 Very large or extensively changed comparisons may show **Doomed comparison is unavailable for this step** with plain historical text. Playback and navigation remain available. See the [comparison rules and limits](docs/RECORDING_FORMAT.md#playback-and-doomed) for deterministic alignment, Unicode granularity, and the implementation limits.
 
-## Export a recording
+## File updates, migration, and conflicts
 
-1. Stop recording and wait until it is saved.
-2. Select **Export recording** in the note's recording bar/file menu, in Replay, or run **Replay: Export recording**.
-3. Review the source note and stopped endpoint. **Destination** defaults to `<note-folder>/<note-name>.replay.json`; choose a filename in an existing vault folder. The suffix must be `.replay.json`. Configuration, plugin, trash, absolute, and traversal paths are rejected.
-4. Select **Export**. Success shows the actual saved path and endpoint after the file has been read back and verified. Existing files are never deliberately replaced; choose another name if the destination exists.
+Only an unchanged companion owned by that local recording can be updated automatically. Replay preserves unrelated or externally edited `.replay` files and reports a collision; move/rename the conflicting file and retry Stop or **Refresh recording file**. It never silently chooses another filename or overwrites imported history.
 
-Export includes the complete starting document and every recorded edit/resume transition, including deleted and superseded writing. It always exports the saved endpoint, regardless of the selected timeline step or Doomed setting. Opening export pauses that note's playback and retains the selected step. Unrecorded live edits are not substituted for saved history.
+Renaming/moving a source note also moves its managed companion when the destination is free. Independently renaming/moving the companion detaches it as a portable snapshot; a later Start/Stop can create the original sibling again. Deleting the source leaves its recording file intact. Deleting a companion preserves the local log; the next explicit Start/Stop/refresh can recreate it.
 
-The file is ordinary readable JSON: no compression, Base64 payload, vault access, or extra files are needed to reconstruct it. You can share that file through your usual file tools. Export itself does not upload anything; the planned online recipient player remains a separate project. See the [portable format](docs/RECORDING_FORMAT.md).
-
-Cancel before saving creates no file. If the source changes before file creation begins, close the dialog, Stop/save, and reopen export. Once creation starts, closing the dialog cannot cancel that write; the captured stopped revision can still finish. If verification fails, a file may exist: inspect it or choose a new destination. The plugin never removes or overwrites it automatically to retry.
+Existing hidden recordings are migrated after layout readiness in queued batches. Their data is retained. Old `.replay.json` exports are left untouched: copy/rename one to `.replay` to open it, using a free destination. The JSON format remains version 1.
 
 ## Local data
 

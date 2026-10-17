@@ -11,10 +11,6 @@
 	flex-wrap: wrap;
 }
 
-.replay-recording-bar [hidden] {
-	display: none;
-}
-
 .replay-recording-bar[data-recording-state="recording"] > span {
 	color: var(--text-error);
 	font-weight: var(--font-semibold);
@@ -206,14 +202,4 @@ button.replay-icon-button:disabled {
 button.replay-icon-button[aria-pressed="true"] {
 	background-color: var(--background-modifier-hover);
 	color: var(--interactive-accent);
-}
-
-.replay-export input {
-	display: block;
-	width: 100%;
-	margin-top: var(--size-4-2);
-}
-
-.replay-export p {
-	overflow-wrap: anywhere;
 }

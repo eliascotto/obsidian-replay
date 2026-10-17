@@ -31,6 +31,11 @@ export default defineConfig(
 	},
 	...obsidianmd.configs.recommended,
 	{
+		// Explicitly requested defaults, scoped to the two recording commands only.
+		files: ['src/commands/recording-commands.ts'],
+		rules: { 'obsidianmd/commands/no-default-hotkeys': 'off' },
+	},
+	{
 		files: ['tests/**/*.ts'],
 		rules: { 'obsidianmd/no-nodejs-modules': 'off' },
 		languageOptions: {

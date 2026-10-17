@@ -70,6 +70,8 @@ export class RecordingStore {
 		return this.serial(async () => !!(await this.indexData()).notes[path]);
 	}
 
+	paths(): Promise<string[]> { return this.serial(async () => Object.keys((await this.indexData()).notes)); }
+
 	release(id: string): void { this.cache.delete(id); }
 
 	load(path: string): Promise<StoredRecording | null> {

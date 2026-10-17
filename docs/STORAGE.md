@@ -1,5 +1,17 @@
 # Local recordings and verification
 
+## Portable companion files
+
+The current workflow maintains a visible sibling `.replay` file beside each recorded Markdown note. It contains the complete version 1 JSON payload and is the only data source needed by the native player. The buffered append log below remains the capture/durability layer; it is not required to play a copied recording.
+
+`recordings/artifacts.json` is a separate version 1 ownership registry, mapping each local recording ID to source/artifact paths, last-published sequence and SHA-256 fingerprint, active-session recovery flag, pending publication fingerprint, and any pending folder/file relocation intent. It contains no duplicate document payload. A file's basename or valid JSON alone never grants ownership.
+
+First Start publishes the initial snapshot while capture continues buffering. Stop flushes accepted steps, publishes the entire portable recording through the Vault API, verifies readback and reconstruction, and only then reports completion. Unchanged Resume does not rewrite the artifact. Periodic capture flushes append only to the journal. Publication errors retain the log and a retryable Stop state; a persisted write intent reconciles uncertain create/replace outcomes after restart.
+
+Automatic replacement checks the full previous fingerprint and compares the checked bytes again in `Vault.process`. Unowned/external changes are preserved. Source renames/moves relocate owned companions without replacement; independent artifact moves detach their portable snapshots. Source deletion leaves portable files intact. Deleting an artifact does not immediately recreate it; the next explicit Start/Stop/refresh may do so.
+
+After layout readiness, migration reads the existing note index and processes one recording at a time with a pause between files. Already published, inactive records need no journal read. Active/pending records recover from durable history. Existing legacy logs and `.replay.json` exports are preserved. Prior desktop/export results later in this document describe the old dialog workflow; the new file workflow has its own verification record in PLAN.md.
+
 The portable contract remains [RECORDING_FORMAT.md](RECORDING_FORMAT.md). Internal storage is separate so editor changes can be appended without rewriting a complete exported recording after each batch.
 
 ## Layout

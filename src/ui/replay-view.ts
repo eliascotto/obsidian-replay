@@ -1,5 +1,5 @@
-import { ItemView, type WorkspaceLeaf, type ViewStateResult } from 'obsidian';
-import type { ReplayCoordinator } from '../replay/coordinator';
+import { FileView, type TFile, type WorkspaceLeaf, type ViewStateResult } from 'obsidian';
+import type { ReplayFileController } from '../replay/file-controller';
 import { renderReplayText } from './replay-text';
 import { PLAYBACK_RATES } from '../replay/types';
 import { DoomedPresentation } from '../replay/doomed-presentation';
@@ -7,7 +7,7 @@ import { createIconButton, updateIconButton } from './icon-button';
 
 export const REPLAY_VIEW_TYPE = 'replay-history';
 
-export class ReplayView extends ItemView {
+export class ReplayView extends FileView {
 	private message!: HTMLElement;
 	private text!: HTMLElement;
 	private previous!: HTMLButtonElement;
@@ -17,25 +17,20 @@ export class ReplayView extends ItemView {
 	private timeline!: HTMLInputElement;
 	private doomedButton!: HTMLButtonElement;
 	private doomedMessage!: HTMLElement;
-	private exportButton!: HTMLButtonElement;
 	private doomed = new DoomedPresentation();
 	private unsubscribe: (() => void) | undefined;
 	private ready = false;
 
-	constructor(leaf: WorkspaceLeaf, private replay: ReplayCoordinator,
-		private opened: () => void, private closed: () => void, private openExport: (path: string) => void,
-	) {
-		super(leaf);
-	}
+	constructor(leaf: WorkspaceLeaf, private replay: ReplayFileController,
+		private legacyFile: (path: string) => Promise<string>, private disposed: () => void,
+	) { super(leaf); }
 
 	getViewType(): string { return REPLAY_VIEW_TYPE; }
-	getDisplayText(): string { return 'Replay'; }
+	getDisplayText(): string { return this.file?.basename ?? 'Replay'; }
 	getIcon(): string { return 'history'; }
 	get path(): string | null { return this.replay.state.path; }
-	get exportPath(): string | null { return this.replay.state.phase === 'ready' && !this.replay.state.player.state.error ? this.path : null; }
 
 	onOpen(): Promise<void> {
-		this.opened();
 		this.contentEl.empty();
 		this.contentEl.addClass('replay-history-view');
 		this.message = this.contentEl.createDiv({ cls: 'replay-message', attr: { role: 'status' } });
@@ -51,7 +46,6 @@ export class ReplayView extends ItemView {
 		this.doomedButton = createIconButton(controls, 'diff', 'Doomed: highlight text that differs from the final recorded step');
 		this.doomedButton.setAttribute('aria-pressed', 'false');
 		this.doomedMessage = this.contentEl.createDiv({ cls: 'replay-message', attr: { role: 'status' } });
-		this.exportButton = createIconButton(controls, 'file-down', 'Export recording');
 		const document = this.contentEl.createEl('pre', { cls: 'replay-document', attr: { tabindex: '0' } });
 		document.contentEditable = 'false';
 		this.text = document.createEl('code');
@@ -65,7 +59,6 @@ export class ReplayView extends ItemView {
 		this.registerDomEvent(this.timeline, 'input', () => this.player()?.requestSeek(Number(this.timeline.value)));
 		this.registerDomEvent(this.timeline, 'change', () => this.player()?.commitSeek());
 		this.registerDomEvent(this.doomedButton, 'click', () => { this.doomed.toggle(); this.render(); });
-		this.registerDomEvent(this.exportButton, 'click', () => { if (this.exportPath) this.openExport(this.exportPath); });
 		this.unsubscribe = this.replay.subscribe(() => this.render());
 		this.ready = true;
 		this.render();
@@ -100,7 +93,6 @@ export class ReplayView extends ItemView {
 		const text = valid ? state.text : '';
 		const display = this.doomed.display;
 		this.doomedButton.disabled = !valid;
-		this.exportButton.disabled = !valid;
 		this.doomedButton.setAttribute('aria-pressed', String(display?.enabled ?? false));
 		this.doomedMessage.setText(display?.message ?? '');
 		try { renderReplayText(this.text, text, display?.ranges); }
@@ -110,13 +102,20 @@ export class ReplayView extends ItemView {
 		}
 	}
 
-	getState(): Record<string, unknown> { return this.path ? { path: this.path } : {}; }
+	onLoadFile(file: TFile): Promise<void> { return this.replay.open(file.path); }
+	onUnloadFile(): Promise<void> { this.replay.close(); return Promise.resolve(); }
+	async onRename(file: TFile): Promise<void> {
+		await super.onRename(file);
+		await this.replay.rename(file.path);
+	}
 
 	async setState(state: unknown, result: ViewStateResult): Promise<void> {
-		await super.setState(state, result);
-		if (typeof state === 'object' && state !== null && 'path' in state && typeof state.path === 'string') {
-			void this.replay.open(state.path);
+		if (typeof state === 'object' && state !== null && 'path' in state && typeof state.path === 'string' && !('file' in state)) {
+			const path = state.path;
+			try { state = { file: await this.legacyFile(path) }; }
+			catch { this.replay.unavailable(path, 'The legacy recording could not be opened. Stop and save its source note to retry.'); return; }
 		}
+		await super.setState(state, result);
 	}
 
 	onClose(): Promise<void> {
@@ -124,7 +123,8 @@ export class ReplayView extends ItemView {
 		this.unsubscribe?.();
 		this.unsubscribe = undefined;
 		this.doomed.dispose();
-		this.closed();
+		this.replay.dispose();
+		this.disposed();
 		this.contentEl.empty();
 		return Promise.resolve();
 	}

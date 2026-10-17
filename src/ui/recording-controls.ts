@@ -4,7 +4,7 @@ import { StorageError } from '../storage/types';
 import type { RecordingController } from '../recording/controller';
 import type { RecordingPhase } from '../recording/session';
 import type { EditorCaptureBridge } from '../capture/editor-extension';
-import { createIconButton, updateIconButton } from './icon-button';
+import type { ReplayWorkspace } from './replay-workspace';
 
 const labels: Record<RecordingPhase, string> = {
 	absent: 'No recording', starting: 'Starting recording', recording: 'Recording',
@@ -15,30 +15,15 @@ export class RecordingControls {
 	private ribbon: HTMLElement;
 	private bar: HTMLElement;
 	private label: HTMLElement;
-	private button: HTMLButtonElement;
-	private replayButton: HTMLButtonElement;
-	private exportButton: HTMLButtonElement;
 	private previous: TFile | null = null;
 	private disposed = false;
 
 	constructor(private plugin: Plugin, private controller: RecordingController, private bridge: EditorCaptureBridge,
-		private openReplay: (path: string) => void, private openExport: (path: string) => void) {
+		private replay: ReplayWorkspace) {
 		this.ribbon = plugin.addRibbonIcon('circle', 'Start recording', () => this.toggle());
 		this.bar = this.ribbon.ownerDocument.createElement('div');
 		this.bar.className = 'replay-recording-bar';
 		this.label = this.bar.createSpan();
-		this.button = createIconButton(this.bar, 'circle', 'Start recording');
-		this.replayButton = createIconButton(this.bar, 'history', 'Open replay');
-		this.exportButton = createIconButton(this.bar, 'file-down', 'Export recording');
-		plugin.registerDomEvent(this.exportButton, 'click', () => {
-			const path = this.current()?.file?.path;
-			if (path && controller.status(path) === 'stopped') this.openExport(path);
-		});
-		plugin.registerDomEvent(this.replayButton, 'click', () => {
-			const path = this.current()?.file?.path;
-			if (path && controller.status(path) === 'stopped') this.openReplay(path);
-		});
-		plugin.registerDomEvent(this.button, 'click', () => this.toggle());
 		plugin.register(controller.subscribe(() => this.refresh()));
 		plugin.register(bridge.subscribe(() => this.refresh()));
 		plugin.registerEvent(plugin.app.workspace.on('active-leaf-change', () => this.switched()));
@@ -46,10 +31,6 @@ export class RecordingControls {
 		plugin.registerEvent(plugin.app.workspace.on('layout-change', () => this.refresh()));
 		plugin.registerEvent(plugin.app.workspace.on('file-menu', (menu, file) => {
 			if (!(file instanceof TFile) || file !== this.current()?.file) return;
-			if (controller.status(file.path) === 'stopped') menu.addItem((item) => item.setTitle('Open replay').setIcon('history')
-				.onClick(() => this.openReplay(file.path)));
-			if (controller.status(file.path) === 'stopped') menu.addItem((item) => item.setTitle('Export recording').setIcon('file-down')
-				.onClick(() => this.openExport(file.path)));
 			if (this.canStart()) menu.addItem((item) => item.setTitle('Start recording').setIcon('circle')
 				.onClick(() => this.start()));
 			if (this.canStop()) menu.addItem((item) => item.setTitle('Stop recording / retry save').setIcon('square')
@@ -70,8 +51,8 @@ export class RecordingControls {
 	}
 
 	canStop(): boolean {
-		const file = this.current()?.file;
-		return !!file && ['starting', 'recording', 'error'].includes(this.controller.status(file.path));
+		const path = this.replay.currentSource();
+		return !!path && ['starting', 'recording', 'error'].includes(this.controller.status(path));
 	}
 
 	start(): void {
@@ -82,8 +63,8 @@ export class RecordingControls {
 	}
 
 	stop(): void {
-		const file = this.current()?.file;
-		if (file && this.canStop()) void this.controller.stop(file.path).catch(() => undefined);
+		const path = this.replay.currentSource();
+		if (path && this.canStop()) void this.controller.stop(path).catch(() => undefined);
 	}
 
 	private toggle(): void { if (this.canStop()) this.stop(); else this.start(); }
@@ -103,23 +84,19 @@ export class RecordingControls {
 		const view = this.current();
 		if (!view?.file) {
 			this.bar.remove();
-			this.ribbon.setAttribute('aria-label', 'Open a Markdown note to record');
-			this.ribbon.setAttribute('aria-disabled', 'true');
-			setIcon(this.ribbon, 'circle');
+			this.ribbon.setAttribute('aria-label', this.canStop() ? 'Stop recording / retry save' : 'Open a Markdown note to record');
+			this.ribbon.setAttribute('aria-disabled', String(!this.canStop()));
+			setIcon(this.ribbon, this.canStop() ? 'square' : 'circle');
 			return;
 		}
 		if (this.bar.parentElement !== view.contentEl) view.contentEl.prepend(this.bar);
 		const phase = this.controller.status(view.file.path);
 		const stop = this.canStop();
 		const action = phase === 'error' ? 'Retry save' : stop ? 'Stop recording' : 'Start recording';
-		this.replayButton.hidden = phase !== 'stopped';
-		this.exportButton.hidden = phase !== 'stopped';
 		this.label.setText(labels[phase]);
-		updateIconButton(this.button, phase === 'error' ? 'rotate-cw' : stop ? 'square' : 'circle', action);
-		this.button.disabled = !this.canStart() && !stop;
 		this.bar.setAttribute('data-recording-state', phase);
 		this.ribbon.setAttribute('aria-label', `${labels[phase]}: ${action}`);
-		this.ribbon.setAttribute('aria-disabled', String(this.button.disabled));
+		this.ribbon.setAttribute('aria-disabled', String(!this.canStart() && !stop));
 		setIcon(this.ribbon, phase === 'error' ? 'alert-circle' : stop ? 'square' : 'circle');
 	}
 
