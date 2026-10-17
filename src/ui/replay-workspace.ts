@@ -15,9 +15,7 @@ export class ReplayWorkspace {
 	constructor(private plugin: Plugin, private recordings: RecordingController, clock: Scheduler, openExport: (path: string) => void) {
 		this.coordinator = new ReplayCoordinator(recordings, clock, (path) => this.note(path) !== null);
 		plugin.registerView(REPLAY_VIEW_TYPE, (leaf) => {
-			const view = new ReplayView(leaf, this.coordinator, (path) => {
-				void this.returnToNote(path).catch(() => new Notice('The note could not be opened.'));
-			}, () => this.bind(view), () => this.closed(view), openExport);
+			const view = new ReplayView(leaf, this.coordinator, () => this.bind(view), () => this.closed(view), openExport);
 			return view;
 		});
 		plugin.registerEvent(plugin.app.vault.on('delete', (file) => this.coordinator.remove(file.path)));
@@ -86,19 +84,6 @@ export class ReplayWorkspace {
 		} catch {
 			if (!this.disposed && request === this.request) new Notice('The replay view could not be opened.');
 		}
-	}
-
-	private async returnToNote(path: string): Promise<void> {
-		const file = this.note(path);
-		if (!file) { new Notice('The note is no longer available.'); return; }
-		if (this.coordinator.state.phase === 'ready') this.coordinator.state.player.pause();
-		const leaf = this.plugin.app.workspace.getLeavesOfType('markdown').find((candidate) =>
-			candidate.getViewState().state?.file === path);
-		if (leaf) {
-			await this.plugin.app.workspace.revealLeaf(leaf);
-			if (!this.disposed) this.plugin.app.workspace.setActiveLeaf(leaf, { focus: true });
-		}
-		else await this.plugin.app.workspace.getLeaf('tab').openFile(file);
 	}
 
 	dispose(): void {

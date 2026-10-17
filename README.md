@@ -29,6 +29,8 @@ npm run check:release
 
 Requires Obsidian 1.7.2 or newer. For an Obsidian smoke test, use a disposable test vault. Copy `main.js`, `manifest.json`, and `styles.css` into `<Vault>/.obsidian/plugins/replay/`, reload Obsidian, and enable Replay in **Settings → Community plugins**. `npm run dev` rebuilds on source changes.
 
+For ongoing local development, symlink those three files individually to the matching files in this project. Keep the plugin directory itself in the vault so `recordings/` stays local to that vault. After `npm run build` (or a rebuild from `npm run dev`), reload the plugin or Obsidian to load the new code; no copying is needed.
+
 ## Record a note
 
 1. Open a Markdown note in editing mode.
@@ -47,10 +49,10 @@ After Stop finishes, select **Open replay** in the note's recording bar or file 
 
 - Select **Play** / **Pause**, **Previous step**, or **Next step** to explore the writing.
 - Drag the **Timeline** or use its arrow keys to select a step. Manual navigation pauses playback.
-- Choose 0.5×, 1×, 2×, or 4×. At 1×, playback advances 4 recorded edits per second. A paste or resumed-document replacement counts as one step; pauses between writing sessions take no time.
+- Choose 0.5×, 1×, 2×, 3×, or 4×. At 1×, playback advances 4 recorded edits per second. A paste or resumed-document replacement counts as one step; pauses between writing sessions take no time.
 - Toggle **Doomed** to highlight historical letters that differ from the final recorded text. It works while playing or navigating and does not change the text or playback state.
 - At the endpoint, select an earlier step to play again. An initial-only recording displays step 0 with no movement available.
-- Select **Return to note** to focus the live note. Starting recording there cancels that note's replay before capture begins. After the next successful Stop, open replay again to load its updated endpoint.
+- Switch to the note's tab to continue writing. Starting recording there cancels that note's replay before capture begins. After the next successful Stop, open replay again to load its updated endpoint.
 
 Playback never replaces the live note or adds recorded edits. Changes made while recording is stopped do not change the replay's endpoint. Closing the Replay tab or unloading the plugin cancels playback and pending timeline work.
 

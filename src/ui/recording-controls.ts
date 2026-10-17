@@ -4,6 +4,7 @@ import { StorageError } from '../storage/types';
 import type { RecordingController } from '../recording/controller';
 import type { RecordingPhase } from '../recording/session';
 import type { EditorCaptureBridge } from '../capture/editor-extension';
+import { createIconButton, updateIconButton } from './icon-button';
 
 const labels: Record<RecordingPhase, string> = {
 	absent: 'No recording', starting: 'Starting recording', recording: 'Recording',
@@ -26,9 +27,9 @@ export class RecordingControls {
 		this.bar = this.ribbon.ownerDocument.createElement('div');
 		this.bar.className = 'replay-recording-bar';
 		this.label = this.bar.createSpan();
-		this.button = this.bar.createEl('button', { text: 'Start recording' });
-		this.replayButton = this.bar.createEl('button', { text: 'Open replay' });
-		this.exportButton = this.bar.createEl('button', { text: 'Export recording' });
+		this.button = createIconButton(this.bar, 'circle', 'Start recording');
+		this.replayButton = createIconButton(this.bar, 'history', 'Open replay');
+		this.exportButton = createIconButton(this.bar, 'file-down', 'Export recording');
 		plugin.registerDomEvent(this.exportButton, 'click', () => {
 			const path = this.current()?.file?.path;
 			if (path && controller.status(path) === 'stopped') this.openExport(path);
@@ -47,7 +48,7 @@ export class RecordingControls {
 			if (!(file instanceof TFile) || file !== this.current()?.file) return;
 			if (controller.status(file.path) === 'stopped') menu.addItem((item) => item.setTitle('Open replay').setIcon('history')
 				.onClick(() => this.openReplay(file.path)));
-			if (controller.status(file.path) === 'stopped') menu.addItem((item) => item.setTitle('Export recording').setIcon('file-output')
+			if (controller.status(file.path) === 'stopped') menu.addItem((item) => item.setTitle('Export recording').setIcon('file-down')
 				.onClick(() => this.openExport(file.path)));
 			if (this.canStart()) menu.addItem((item) => item.setTitle('Start recording').setIcon('circle')
 				.onClick(() => this.start()));
@@ -114,7 +115,7 @@ export class RecordingControls {
 		this.replayButton.hidden = phase !== 'stopped';
 		this.exportButton.hidden = phase !== 'stopped';
 		this.label.setText(labels[phase]);
-		this.button.setText(action);
+		updateIconButton(this.button, phase === 'error' ? 'rotate-cw' : stop ? 'square' : 'circle', action);
 		this.button.disabled = !this.canStart() && !stop;
 		this.bar.setAttribute('data-recording-state', phase);
 		this.ribbon.setAttribute('aria-label', `${labels[phase]}: ${action}`);

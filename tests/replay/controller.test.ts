@@ -145,7 +145,7 @@ void test('invalid input preserves the previously selected state and rate', () =
 		assert.throws(() => player.requestSeek(sequence));
 		assert.deepEqual(player.state, before);
 	}
-	for (const rate of [0, -1, NaN, Infinity, 3]) {
+	for (const rate of [0, -1, NaN, Infinity, 1.5, 5]) {
 		assert.throws(() => player.setRate(rate));
 		assert.deepEqual(player.state, before);
 	}

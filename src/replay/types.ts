@@ -2,7 +2,7 @@ import type { RecordingReference } from '../recording/replay-access';
 import type { ReplayController } from './controller';
 
 export const BASE_STEPS_PER_SECOND = 4;
-export const PLAYBACK_RATES: readonly number[] = Object.freeze([0.5, 1, 2, 4]);
+export const PLAYBACK_RATES: readonly number[] = Object.freeze([0.5, 1, 2, 3, 4]);
 
 export interface ReplayState {
 	readonly sequence: number;

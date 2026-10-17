@@ -1,6 +1,7 @@
 import { Component, Modal, type App } from 'obsidian';
 import { suggestedDestination, validateDestination, type ExportPaths } from '../export/destination';
 import type { ExportController } from '../export/export-controller';
+import { createIconButton, updateIconButton } from './icon-button';
 
 export class ExportModal extends Modal {
 	private lifecycle = new Component();
@@ -27,8 +28,8 @@ export class ExportModal extends Modal {
 		this.fieldError = form.createEl('p', { cls: 'replay-message', attr: { role: 'status' } });
 		this.status = form.createEl('p', { attr: { role: 'status' } });
 		const actions = form.createDiv({ cls: 'replay-playback-controls' });
-		this.submit = actions.createEl('button', { type: 'submit', text: 'Export', cls: 'mod-cta' });
-		this.cancel = actions.createEl('button', { type: 'button', text: 'Cancel' });
+		this.submit = createIconButton(actions, 'file-down', 'Export recording', 'submit');
+		this.cancel = createIconButton(actions, 'x', 'Cancel');
 		this.lifecycle.registerDomEvent(form, 'submit', (event) => {
 			event.preventDefault();
 			if (!this.submit.disabled) void this.request.save(this.destination.value);
@@ -52,7 +53,7 @@ export class ExportModal extends Modal {
 		this.submit.disabled = !this.request.canSave || !!error;
 		this.destination.disabled = ['saving', 'stale', 'success', 'closed'].includes(state.phase);
 		this.cancel.disabled = state.phase === 'saving';
-		this.cancel.setText(state.phase === 'success' ? 'Close' : 'Cancel');
+		updateIconButton(this.cancel, 'x', state.phase === 'success' ? 'Close' : 'Cancel');
 	}
 
 	onClose(): void {

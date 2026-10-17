@@ -1,6 +1,6 @@
 # Replay: project definition
 
-Status: product specification.
+Status: product specification. The `.replay` file workflow below was agreed on 2026-10-17 and is planned, not yet implemented.
 
 This document defines what Replay is intended to do. It is the product source of truth. [PLAN.md](docs/PLAN.md) defines how the MVP will be built and must follow this definition where the two disagree. This document does not describe functionality already implemented.
 
@@ -15,14 +15,14 @@ The motivation comes from Paul Graham's [Watch Me Make Mistakes](https://paulgra
 ## Primary user journey
 
 1. Open a Markdown note in Obsidian. It may already contain text.
-2. Select **Start recording** for that note.
+2. Select **Start recording** from the ribbon, note file menu, command palette, or configured shortcut. Replay automatically creates `<note-name>.replay` beside the note.
 3. Write and revise normally. Replay records the changes while recording is active.
-4. Select **Stop recording**. The recording retains everything needed to reconstruct its starting text and the subsequent recorded states.
-5. Open the recording and select **Play**, change the playback rate, step through changes, or drag the timeline to explore how the article developed.
+4. Select **Stop recording**. Replay saves the captured changes and updates the companion `.replay` file with the complete recording.
+5. Select the `.replay` file in Obsidian’s Files pane to open its read-only player. Select **Play**, change the playback speed, step through changes, or drag the timeline.
 6. Toggle **Doomed** to compare the selected step with the final recorded step and highlight the differing text in the selected step.
-7. Export the recording as one self-contained, readable file that can be shared independently of the vault.
+7. Copy or share the `.replay` file directly. Someone with Replay enabled can open it in another vault without the original Markdown note or hidden recording data; no separate export action is needed.
 
-The complete sharing journey will eventually let a recipient watch the exported recording through a separate online service planned by the project owner. Building that service or a standalone recipient viewer is outside the plugin MVP. The MVP provides the export that makes this future journey possible.
+A separate online service may later play these same portable recordings. Hosted sharing, uploads, and a standalone browser player remain outside the plugin scope; opening a shared `.replay` file inside Obsidian is now required.
 
 The writer can also start recording again after stopping. This continues the same recording, including when the writer resumes on another day.
 
@@ -67,7 +67,7 @@ Handling sync, Git, or other external edits as a comprehensive version-history s
 
 ## Replay experience
 
-When a recording is present and stopped, expose its replay controls:
+Register `.replay` as a custom file extension. Selecting a valid `.replay` file opens a native file-backed tab with these replay controls:
 
 - **Play / Pause**.
 - **Playback rate**.
@@ -75,9 +75,9 @@ When a recording is present and stopped, expose its replay controls:
 - A draggable **timeline** showing the selected position.
 - A **Doomed** toggle.
 
-Also expose the relevant **Start recording / Stop recording** action with a clear indication of whether recording is active for the note. Exact placement is a UI design decision; users should not need to inspect settings to understand the recording state.
+Keep **Start recording / Stop recording** in the ribbon, note file menu, command palette, and two configurable keyboard shortcuts. Remove the recording action, open-replay action, and export action from the note header; remove export from the player. A compact, non-interactive recording/saving/error status may remain above the note. Configure shortcuts through **Settings → Hotkeys**. The `.replay` view and tab use the existing Lucide `history` icon, previously used for **Open replay**.
 
-Recording and replay are mutually exclusive. **Play** is available only when the file has a recording and recording is stopped. While recording is active, playback, stepping, timeline exploration, and Doomed preview are unavailable. Starting or resuming recording exits replay and returns to the current live document before capturing changes. Stopping makes replay controls available again; it does not automatically start playback.
+Recording and replay remain mutually exclusive for the same locally managed recording. While its source note is starting, recording, saving, or in an unresolved save error, pause and disable its `.replay` player. A successful Stop refreshes that file and enables replay without starting playback. A copied or shared recording has no dependency on a source note and plays independently. Never infer a recording association from a matching filename alone.
 
 The replay displays the same note as it existed at the selected recorded point, in a read-only viewing surface. Watching or navigating a recording must not save historical text over the live document or generate recorded edits.
 
@@ -113,23 +113,19 @@ Doomed depends only on those two document states. It does not track character id
 
 ## A recording is a self-contained, shareable artifact
 
-The user should be able to export a recording as **one file**. That file must contain everything needed to reconstruct the entire document at the beginning and at every subsequent recorded point, including its final state.
+Replay automatically maintains one **`<note-name>.replay`** file beside each recorded Markdown note, for example `Essays/Article.md` → `Essays/Article.replay`. It is a normal visible vault file, self-contained and ready to copy/share.
 
-For the MVP, the export must use a readable, structured plain-text format, such as JSON. Document text must be inspectable without decoding an opaque binary or Base64 payload; ordinary format escaping is acceptable. The MVP export is uncompressed. Compression may be considered later. The exact schema and filename extension remain implementation decisions and must be documented so the future service can consume the format independently of Obsidian.
+The file contains readable, uncompressed JSON using the existing version 1 recording schema: format identifier/version, complete initial text, ordered edit/resume steps, and enough data to reconstruct every state and compute Doomed. The new extension does not itself require a format version change. It must not require vault paths, local recording IDs, external resources, executable code, or hidden plugin storage for playback.
 
-At minimum, the artifact needs:
+On the first Start, create an initial-only `.replay` file once initialization succeeds, while buffering edits captured during initialization. During capture, keep using efficient buffered internal writes. Publish the complete recording after each successful Stop; do not rewrite the entire JSON file on every keystroke. Until then, the file represents the initial state or last completed Stop. Explain that Stop updates the shareable file.
 
-- A format version.
-- The complete initial document text.
-- The ordered recorded changes and any resume transitions.
-- The information needed to establish the final state and ordered step progression.
-- Enough information to compute doomed highlighting, without depending on the original vault.
+A successful Stop means both the internal history and the visible file have been saved and verified. If publication fails, keep the durable history and last valid file, show a retryable save error, and do not silently report completion. Reconcile interrupted publication against the durable log after restart.
 
-Recipients must not need the original Markdown file, the sender's local history directory, or access to the sender's vault. Export includes deleted and superseded text because those are part of the writing process being shared. Make that clear at export.
+Automatic publication may replace only an artifact that this recording owns and whose contents have not changed externally. Preserve conflicting, imported, or edited files and explain how to resolve the collision. Keep ownership and publication bookkeeping in local storage, outside the portable JSON.
 
-The local storage layout is an implementation decision; internal storage may consist of multiple files as long as the exported artifact is self-contained. Reading the export must not require Obsidian-specific runtime objects, private plugin state, or access to the original vault.
+The file includes deleted and superseded writing. Disclose that in recording setup/help and the README, since there will no longer be an export confirmation dialog. No upload or network service is involved.
 
-The project owner plans a separate online service for sharing and playing exported recordings. That service, upload integration, an Obsidian import workflow, and a standalone browser viewer are not MVP requirements. The plugin must produce a portable artifact suitable for a future independent player. A stopped recording must be exportable. Exporting an active recording is not yet a requirement.
+Opening `.replay` is playback, not importing it into the note's active recording. The original Markdown note and internal history need not exist. The recipient needs Replay enabled in Obsidian. A separate web service, upload integration, editable/imported recording sessions, and a standalone browser player remain outside scope.
 
 ## Scope boundaries
 
@@ -142,7 +138,8 @@ Required product capabilities:
 - Read-only replay with adjustable rate, step controls, and timeline navigation, available only while recording is stopped.
 - A steady adjustable edit rate and a timeline based on recorded steps, with no original pauses.
 - Doomed highlighting based on a text diff between the selected recorded step and the final recorded step.
-- Export as a single self-contained, readable, uncompressed recording file with a documented format.
+- Automatic creation and verified updates of a visible sibling `.replay` file; native file-based playback and direct sharing of that self-contained, readable, uncompressed file.
+- Start/Stop through ribbon, file menu, command palette, and two configurable shortcuts, without redundant header action buttons.
 - Local operation without requiring a cloud account or sending vault content to an external service.
 
 Not required by this product definition:
@@ -155,7 +152,7 @@ Not required by this product definition:
 - Deleted-passage recovery tools or restoring historical states into the live note.
 - Draft comparison, writing statistics, or semantic analysis of revisions.
 - Collaborative editing, hosted sharing, or a publishing service within the plugin MVP. The planned online sharing and playback service is a separate project.
-- Upload integration, importing exported recordings into Obsidian, or a standalone browser player for the MVP.
+- Upload integration, adopting imported recordings as editable recording sessions, or a standalone browser player. Opening portable files for playback is in scope.
 - Compressed, opaque binary, or Base64-encoded exports for the MVP.
 - Recording cursor movement, selections, or editor scrolling.
 
@@ -171,8 +168,10 @@ Retention controls, history deletion, storage limits, snapshot frequency, compre
 6. **Inspect doomed text:** at an earlier state, enable Doomed and see the selected-state differences from the final recorded text highlighted, while unchanged text remains unhighlighted. Disable it to see the same historical text without the highlight. Identical selected and final states have no highlighting, including after deletion and retyping.
 7. **Extend the ending:** resume, make further revisions, and stop. Replay includes both recording periods, and doomed analysis uses the new ending.
 8. **Restart Obsidian:** previously saved recording states remain reconstructable and playable.
-9. **Export for sharing:** export one readable, uncompressed file. Using only that file and the documented format, reconstruct the initial, intermediate, resumed, and final states and compute doomed highlighting without the original vault. This verifies portability; delivering the online service or another recipient-facing player is outside MVP acceptance.
-10. **Keep recording and replay separate:** while recording, Play and historical navigation are unavailable. Stop to enable replay. Starting again exits replay, captures from the current live document, and continues the file's single recording without recording historical playback states.
+9. **Share a recording:** Start creates the sibling `.replay` file and Stop updates it. Open it from Files, then copy it alone into another vault with Replay enabled. Play, seek, and compute Doomed without the original note or hidden history. No export dialog or open-replay button is involved.
+10. **Keep recording and replay separate:** while recording, that recording’s `.replay` player is paused/disabled. Stop saves and updates it before enabling playback. Starting again captures only the live Markdown document and retains the existing history.
+11. **Use the simplified controls:** no record/replay/export buttons remain in the note header, and no export button remains in the player. The ribbon, note menu, palette, and configurable Start/Stop hotkeys work with the correct active note. Replay files open with the existing `history` tab icon.
+12. **Preserve files:** source renames/moves keep the managed companion beside the note without overwriting unrelated files. Publication failures, externally edited artifacts, source deletion, and restart preserve recoverable history and portable recordings.
 
 ## Relationship to the implementation plan
 
@@ -181,7 +180,8 @@ Implementation progress and verification results are tracked in [PLAN.md](docs/P
 The single implementation plan, [PLAN.md](docs/PLAN.md), must:
 
 - Make explicit start/stop recording and continuation of one recording per file the core capture workflow. Make recording and replay mutually exclusive.
-- Add a documented, readable, uncompressed, self-contained recording export. Keep the future online sharing and playback service outside the plugin MVP.
+- Automatically maintain a documented, readable, uncompressed `.replay` file beside the note and use that file as the player entry point. Keep hosted sharing/upload and a standalone web player outside scope.
+- Preserve the minimal player toolbar, remove redundant header actions, and provide two configurable Start/Stop shortcuts with the existing stable command IDs.
 - Add Doomed as a named product feature using a text diff between the selected step and the last recorded step, without tracking text provenance.
 - Replace the assumption that every mismatch must stop recording with the required resume transition for unrecorded work.
 - Define playback and timeline progression by recorded steps at a steady adjustable rate, with no original delays or pauses.
