@@ -1,6 +1,6 @@
 # Replay: MVP implementation plan
 
-[PROJECT.md](../PROJECT.md) defines the product and takes precedence over this plan. This document is the single implementation plan. The `.replay` file workflow agreed on 2026-10-17 is implemented in milestone 6. Milestones 1–5 retain their completed checklists as implementation history; their manual export dialog and note-backed replay entry points are superseded by milestone 6. Milestone 6 records the new implementation and its remaining device checks.
+[PROJECT.md](../PROJECT.md) defines the product and takes precedence over this plan. This document is the single implementation plan. The `.replay` file workflow agreed on 2026-10-17 is implemented in milestone 6. Milestones 1–5 retain their completed checklists as implementation history; their manual export dialog and note-backed replay entry points are superseded by milestone 6. Milestone 6 records the new implementation and its remaining device checks. Milestone 7 implements native Markdown rendering in the replay surface and records its verification limits.
 
 ## Current state and delivery target
 
@@ -931,6 +931,107 @@ A fully isolated second-vault manual pass, extended rename/move/collision/popout
 Use the public [extension registration API](https://github.com/obsidianmd/obsidian-developer-docs/blob/main/en/Reference/TypeScript%20API/Plugin/registerExtensions.md), [Obsidian API types](https://github.com/obsidianmd/obsidian-api/blob/master/obsidian.d.ts) for `FileView`, `registerView`, Vault/file events and command hotkeys, and the [plugin guidelines](https://github.com/obsidianmd/obsidian-developer-docs/blob/main/en/Plugins/Releasing/Plugin%20guidelines.md) for lifecycle, vault writes, and shortcut conflicts.
 
 Implement naming/ownership → publisher and controller integration → native file view → simplified controls/hotkeys → migration/recovery → full verification and usage docs. Build and verify the replacement workflow before removing the working export/open entry points. Retain milestones 1–5 above as historical evidence, not as requirements to keep the superseded UI.
+
+### 7. Native Markdown reading surface for replay
+
+Status: implemented on 2026-10-17, with automated checks and a macOS test-vault smoke test. Extended device/plugin combinations remain unverified. The default document display now uses Obsidian-rendered Markdown while playback remains read-only. This milestone changes presentation only; recording, artifact publication, file format, and reconstruction remain unchanged. Milestone 6's text-node-only rendering describes the previous default; exact-source rendering remains available for Doomed and the documented fallback cases. Core integration checks have passed; broader manual/device checks remain listed below.
+
+#### Intended behavior and design decisions
+
+- Keep the registered `.replay` `FileView`, native file tab, `history` icon, and existing minimal playback toolbar. Use the public `MarkdownRenderer.render(app, markdown, element, sourcePath, component)` API for the document area. A normal `MarkdownView` is tied to editable Markdown-file lifecycle; do not attach historical snapshots to the live note or create temporary Markdown files to drive its Reading view.
+- With **Doomed** off, render the selected historical snapshot using Obsidian's Markdown renderer and reading-view typography, spacing, and readable line width. Support ordinary headings, paragraphs, emphasis, lists, quotes, tables, callouts, links, and fenced code. Incomplete Markdown during typing follows the native renderer's interpretation; the underlying recorded string stays exact.
+- The user can scroll, select, and copy rendered text, but cannot edit historical content, toggle recorded tasks, or switch this replay tab into an editor. Playback must never write to the live note, recording artifact, or local history.
+- Doomed behavior for this milestone: enabling **Doomed** shows the existing exact-source surface with accurate yellow highlights and the short explanation **Showing source for Doomed highlights.** Disabling it returns to rendered Markdown at the same selected step and playback rate. Preserve play/pause state; do not seek or restart. Hidden Markdown delimiters, link destinations, comments, and frontmatter prevent a general exact mapping from source offsets onto visible text. Highlighting formatted Markdown is a separate follow-up, not a prerequisite or an approximate replacement for existing Doomed semantics.
+- Keep 150 ms per recorded step at 1×, the 0.5×/1×/2×/3×/4× multipliers, ignored original pauses, keyboard controls, manual-navigation pause, and endpoint/restart behavior. No new mode selector, recording controls, or settings panel is required.
+
+#### Module boundaries
+
+| Module | Responsibility |
+| --- | --- |
+| `src/ui/replay-view.ts` | Compose controls and document surface; forward immutable selected snapshots and lifecycle changes. Keep asynchronous rendering logic out of the toolbar update path. |
+| `src/ui/replay-document.ts` (new) | Own rendered/source surfaces, per-render child components, generation guards, bounded pending work, read-only interactions, scroll handling, and fallback messages. |
+| `src/ui/replay-text.ts` | Retain exact-source rendering and Doomed spans for the explicit Doomed surface and rendering fallback. |
+| `src/replay/doomed-presentation.ts` | Retain comparison rules and bounded cache; no HTML injection or diff algorithm changes. |
+| `styles.css` | Scope native reading-surface styling to Replay, retain source-mode highlights, and remove the default code-panel appearance from rendered Markdown. |
+| `tests/replay/` | Test document rendering coordination through an injected renderer boundary; retain existing playback, file lifecycle, and source-highlight tests. |
+
+#### Task 7.1 — Verify the native rendering boundary
+
+- [ ] Prototype `MarkdownRenderer.render` in the existing disposable test vault before replacing the current display. Compare the same Markdown with a normal Reading view in light/dark themes and inspect native wrappers, line-width behavior, selection, and links. Use public APIs; do not instantiate undocumented preview internals or patch global Markdown behavior.
+- [x] Verify per-render `Component` ownership and cleanup for native render children. Determine which native controls, embeds, and Markdown post-processors can mutate files, execute plugin code, or request external resources. Rendering is not automatically inert merely because there is no editor.
+- [x] Define and test a conservative content policy before invoking native rendering: no Replay-initiated remote asset loads or execution of recorded scripts/dynamic code blocks. Unsupported active content must remain inert code/text or use the exact-source fallback with a concise explanation. Do not rely only on removing elements after rendering, when effects may already have occurred. If the public renderer cannot meet this boundary for a content class, use the fallback for that class and document the limitation; do not claim arbitrary third-party renderer output is safely read-only.
+- [x] Use the actual `.replay` path as the renderer's relative-link context, without requiring a source note or inferring ownership from its filename. Images and embeds use source fallback before rendering, including local resources. Explicit internal links resolve in the recipient vault; resources and other notes are not historical snapshots packaged inside the recording. Missing resources must not prevent playback.
+
+Deliverable: a verified renderer integration and explicit content/fallback policy, with no changes to capture or storage.
+
+#### Task 7.2 — Add lifecycle-safe asynchronous rendering
+
+- [x] Introduce a document presenter with an injected async renderer for tests. Identify each request by loaded player/file revision, selected sequence, and display mode. Re-render only when document content or presentation mode changes, rather than on every unrelated control notification.
+- [x] Keep at most one render in progress and one latest pending snapshot. Coalesce superseded visual work during fast playback/scrubbing without changing controller progression. After pause, seek, or endpoint, settle on the exact selected state; never drop the final requested snapshot.
+- [x] Render into an owned staging surface and commit only if the request is still current. Do not let a delayed result replace a newer step, source-mode display, another file, an unavailable state, or a closed view. Keep the previous committed frame stable while rendering, expose a busy state accessibly, and show a short loading message if completion is noticeably delayed.
+- [x] Dispose discarded render components, replaced render children, staged DOM, and listeners. Invalidate pending work on file replacement, capture exclusion, rename/reload, deletion, unload, and close. Late completion must not recreate the view or leak components.
+- [x] Catch renderer failures and show the exact selected source with **Markdown preview is unavailable for this step.** Playback, navigation, copying, and Doomed remain usable. Never replace a valid historical string with partial HTML or stale output.
+
+Deliverable: async rendering cannot race playback or file lifecycle, accumulate unbounded work, or change the recording.
+
+#### Task 7.3 — Match Reading view and enforce viewing-only interactions
+
+- [x] Replace the default `<pre><code>` document panel with the native-rendered surface. Use the owning document/window and native Markdown styling where supported; scope Replay's layout CSS so it does not restyle other notes. Keep the toolbar fixed above the independently scrolling document.
+- [x] Preserve user scroll position across ordinary playback updates, clamped when content shrinks; preserve an approximate reading position when switching rendered/source surfaces. Avoid resetting to the top or stealing focus on each edit. Automatic following of the edited paragraph is outside this milestone.
+- [x] Disable task checkboxes and other built-in mutating controls for pointer and keyboard use. Keep rendered content non-editable, selection/copy usable, and ordinary links accessible. Opening a link is an explicit user action and must not replace the replay's data or establish a recording association.
+- [x] Preserve Space/Left/Right playback shortcuts and normal speed-selector controls. Ensure document interactions, links, focus visibility, and screen-reader status work without adding an editor or writable fields.
+
+Deliverable: replay looks like a native Markdown reading surface and remains viewing-only.
+
+#### Task 7.4 — Preserve Doomed and source fallback
+
+- [x] Reuse `renderReplayText` and `DoomedPresentation` unchanged in semantics. On **Doomed** activation, invalidate pending native rendering and display the selected source and its matching ranges together. The explanation is visible only while this source presentation is active.
+- [x] Keep rendered/source mode synchronized with selected step, playback state, and the loaded file revision. Reuse comparison caches as today; reset them on player replacement. No highlights are stored in the recording or inserted into Markdown sent to the renderer.
+- [x] On comparison work-limit/error, preserve the existing unavailable message and exact source. On native-renderer failure, distinguish that fallback message from Doomed comparison failure. Toggling off must request the current snapshot, never revive an earlier rendered frame.
+
+Deliverable: Doomed stays accurate, including changes to Markdown syntax that disappear in formatted output.
+
+#### Task 7.5 — Automated verification
+
+- [x] Test delayed and out-of-order requests, rapid seeks, latest-pending coalescing, repeated identical content, mode changes during render, errors, and final-state settling. Assert a stale completion never commits and each discarded/replaced component is cleaned up.
+- [x] Test file replacement, same-recording capture exclusion, rename, invalid-file loading, and view disposal during an outstanding render. Assert zero writes through recording/vault adapters during viewing and interaction tests.
+- [x] Retain exact-source/Unicode/highlight tests and all supported-rate timing tests. Add mode-switch coverage while paused, playing, and at the endpoint without changing sequence, rate, or controller timers.
+- [ ] Use a real DOM/Obsidian integration check for native Markdown output, task interaction, sanitization, and resource behavior; fake renderer tests establish coordination only. Include a documented set of Markdown features, incomplete syntax, empty text, large pastes, missing attachments, recorded HTML, external images, and dynamic code blocks.
+
+Deliverable: meaningful coverage of rendering coordination and no regressions in existing reconstruction/playback guarantees.
+
+#### Task 7.6 — Update and verify the existing Obsidian test vault
+
+- [x] Run `npm test`, `npm run lint`, `npm run build`, `npm run check:release`, and `git diff --check`. Keep generated bundles and test-vault contents out of version control.
+- [x] Update the existing `Replay-desktop-test-nbi6fp1u` vault. Its current path is `/private/var/folders/vh/w76k8xc97ps0p5sbh08mk1xw0000gn/T/Replay-desktop-test-nbi6fp1u`; resolve the active vault again if that temporary directory has moved. Its `.obsidian/plugins/replay/main.js`, `manifest.json`, and `styles.css` currently symlink to the project: verify the links, rebuild, and reload the plugin/app so the new bundle is loaded. Do not replace the vault or its recording data.
+- [ ] Compare rendered replay against native Reading view for the same fixture. Exercise all speeds, pause/resume, stepping, rapid scrubbing, endpoint/restart, and Doomed switching while playing. Verify usable scroll/selection, no flicker from stale frames, and acceptable rendering at 4× (37.5 ms controller intervals); record limitations on large notes without changing the rate contract.
+- [ ] Attempt checkbox changes, text entry, paste, and drop in the replay surface. Confirm no content changes and compare source-note, `.replay`, and local-history bytes before/after the viewing pass. Verify external resources and dynamic blocks follow the policy established in 7.1.
+- [ ] Open a standalone copied recording without its source note, two replay tabs, and a popout; close/reload during rendering. Exercise source rename and Resume/Stop while a preview is pending. Check missing local resources and ensure no hidden recording association is created.
+- [ ] Verify minimum supported Obsidian and mobile where available; record unperformed checks honestly. Do not raise `minAppVersion` unless a required API actually demands it.
+- [x] Update `PROJECT.md`, `README.md`, and `docs/RECORDING_FORMAT.md` to describe default rendered Markdown, viewing-only interactions, Doomed's source presentation, attachment context, and any renderer fallback limits. Replace text-node-only claims only when the implementation is verified. Record results here and mark tasks complete only with evidence.
+
+Completion: the existing test vault runs the updated plugin; ordinary replay uses Obsidian-rendered Markdown; Doomed retains exact highlighting in source presentation; navigation stays responsive; viewing never writes recorded or live content. No release, tag, upload, or publication is part of this milestone.
+
+Implementation order: native-rendering/content-policy prototype → async presenter and lifecycle tests → reading-surface integration → Doomed/source switching → test-vault verification and documentation.
+
+Reference: the public [Obsidian API declarations](https://github.com/obsidianmd/obsidian-api/blob/master/obsidian.d.ts) expose `MarkdownRenderer.render`, `MarkdownView.previewMode`, `MarkdownPreviewView`, and `Component`. Use the locally installed API types to check compatibility with the declared minimum version. Reusing the renderer does not promise every behavior of a full Markdown file tab or every third-party plugin.
+
+
+#### Verification recorded on 2026-10-17
+
+`npm test` passes 246 tests; lint and the production build pass. The 13 new cases cover preview preflight and bounded async render coordination: coalescing, endpoint settling, invalidation, source-mode changes, immediate close cleanup, stale failures, and recovery. Existing all-rate timing, source/Unicode highlights, file lifecycle, and recording-exclusion tests remain green. No runtime dependency or format/manifest change was added.
+
+The existing `Replay-desktop-test-nbi6fp1u` vault runs the linked build on Obsidian 1.13.7/macOS. A normal Reading view of the matching Markdown fixture was visually compared in the current dark theme. A standalone 39-step fixture renders native headings, emphasis, a callout, a table, ordered lists, tasks, links, and an unnamed code block. Accessibility inspection confirms both task checkboxes are disabled. Typing/paste and task-click attempts leave the document unchanged. Doomed switches to exact source and back at step 20 without changing the selection; 4× rendered playback reaches step 39 with the full final text and Restart state. A separate initial-only fixture containing remote-image HTML and a DataviewJS fence displays inert exact source with the expected explanation. Hashes of all 37 monitored Markdown, `.replay`, and internal history/journal files are unchanged after the viewing pass.
+
+The content policy intentionally falls back for all named fences, HTML, images/embeds, and inline query syntax before calling the renderer. This includes harmless constructs when they cannot be distinguished conservatively. It does not sandbox arbitrary installed third-party post-processors on ordinary prose. The renderer uses a detached staging element and a per-render child `Component`; no private preview API, temporary note, or live-editor substitution is used.
+
+Remaining unchecked items retain broader manual scenarios: light-theme native-view comparison, every speed/large-note performance combination, drag/drop and clipboard selection checks, popouts, source rename and Resume/Stop during native rendering, arbitrary third-party processors, the minimum Obsidian version, and mobile. Automated coordination tests do not claim to verify those device interactions. No release/tag/publication was performed.
+
+#### Playback speed preference follow-up — 2026-10-17
+
+The speed selector now uses content-based width, centered text, and balanced 6 px horizontal / 2 px vertical padding instead of a fixed width with uneven padding. Playback speed is loaded from `Plugin.loadData` before registering replay views and saved through `Plugin.saveData`. A validated shared preference updates open players without moving or pausing playback and supplies the initial rate after file changes, refreshes, renames, and restarts. Saves are serialized, preserve unrelated preference fields, and recover after an earlier failure. A failed save keeps the in-session rate and shows a notice. Recording files are unchanged.
+
+`npm test` passes 250 tests, including four new preference cases covering malformed settings, ordered writes/failure recovery, shared open/new-file rates, and persistence across plugin sessions. Lint and the production build pass. The existing symlinked test-vault build was rebuilt and reloaded. On macOS/Obsidian 1.13.7, selecting 2× in Demo 1 saved `playbackRate: 2` in local plugin preferences; opening Native reading check inherited 2×, and reloading Obsidian restored it at 2×. The narrower control and balanced padding were visually verified.
 
 ## Verification and definition of done
 

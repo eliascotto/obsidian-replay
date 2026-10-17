@@ -1,6 +1,7 @@
 import { parseRecording } from '../recording/format';
 import type { Scheduler } from '../storage/types';
 import { ReplayController } from './controller';
+import type { ReplayPreferences } from '../settings';
 
 export type FileReplayState =
 	| { phase: 'idle'; path: null }
@@ -17,8 +18,22 @@ export class ReplayFileController {
 	private disposed = false;
 	private selectedPath: string | null = null;
 	private selectedSequence = 0;
-	constructor(private read: (path: string) => Promise<string>, private clock: Scheduler, private blocked: (path: string) => boolean) {}
+	private releasePreference: (() => void) | undefined;
+	constructor(private read: (path: string) => Promise<string>, private clock: Scheduler, private blocked: (path: string) => boolean,
+		private preferences?: ReplayPreferences) {
+		this.releasePreference = preferences?.subscribe(() => {
+			if (this.current.phase === 'ready' && this.current.player.state.rate !== preferences.playbackRate) {
+				this.current.player.setRate(preferences.playbackRate);
+			}
+		});
+	}
 	get state(): FileReplayState { return this.current; }
+
+	setRate(rate: number): void {
+		if (this.disposed || this.current.phase !== 'ready') return;
+		this.current.player.setRate(rate);
+		this.preferences?.setRate(rate);
+	}
 	subscribe(listener: () => void): () => void { this.listeners.add(listener); return () => this.listeners.delete(listener); }
 	private changed(): void { if (!this.disposed) this.listeners.forEach((listener) => listener()); }
 	private release(): void {
@@ -40,6 +55,7 @@ export class ReplayFileController {
 			if (this.blocked(path)) { this.unavailable(path, 'Stop and save the source recording before replaying.'); return; }
 			const recording = parseRecording(text);
 			const player = new ReplayController(recording, this.clock);
+			player.setRate(this.preferences?.playbackRate ?? 1);
 			player.select(Math.min(sequence, recording.steps.length));
 			this.current = { phase: 'ready', path, player };
 			this.releasePlayer = player.subscribe(() => this.changed());
@@ -79,5 +95,9 @@ export class ReplayFileController {
 		this.current = { phase: 'idle', path: null };
 		this.changed();
 	}
-	dispose(): void { this.close(); this.disposed = true; this.listeners.clear(); }
+	dispose(): void {
+		this.releasePreference?.();
+		this.releasePreference = undefined;
+		this.close(); this.disposed = true; this.listeners.clear();
+	}
 }

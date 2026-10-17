@@ -1,6 +1,6 @@
 import { FileView, Scope, type TFile, type WorkspaceLeaf, type ViewStateResult } from 'obsidian';
 import type { ReplayFileController } from '../replay/file-controller';
-import { renderReplayText } from './replay-text';
+import { ReplayDocument } from './replay-document';
 import { PLAYBACK_RATES } from '../replay/types';
 import { DoomedPresentation } from '../replay/doomed-presentation';
 import { createIconButton, updateIconButton } from './icon-button';
@@ -9,14 +9,13 @@ export const REPLAY_VIEW_TYPE = 'replay-history';
 
 export class ReplayView extends FileView {
 	private message!: HTMLElement;
-	private text!: HTMLElement;
+	private document!: ReplayDocument;
 	private previous!: HTMLButtonElement;
 	private next!: HTMLButtonElement;
 	private play!: HTMLButtonElement;
 	private rate!: HTMLSelectElement;
 	private timeline!: HTMLInputElement;
 	private doomedButton!: HTMLButtonElement;
-	private doomedMessage!: HTMLElement;
 	private doomed = new DoomedPresentation();
 	private unsubscribe: (() => void) | undefined;
 	private ready = false;
@@ -52,14 +51,11 @@ export class ReplayView extends FileView {
 		for (const rate of PLAYBACK_RATES) this.rate.createEl('option', { value: String(rate), text: `${rate}×` });
 		this.doomedButton = createIconButton(controls, 'diff', 'Doomed: highlight text that differs from the final recorded step');
 		this.doomedButton.setAttribute('aria-pressed', 'false');
-		this.doomedMessage = this.contentEl.createDiv({ cls: 'replay-message', attr: { role: 'status' } });
-		const document = this.contentEl.createEl('pre', { cls: 'replay-document', attr: { tabindex: '0' } });
-		document.contentEditable = 'false';
-		this.text = document.createEl('code');
+		this.document = this.addChild(new ReplayDocument(this.app, this.contentEl));
 		this.registerDomEvent(this.play, 'click', () => this.player()?.togglePlayback());
 		this.registerDomEvent(this.previous, 'click', () => this.player()?.previous());
 		this.registerDomEvent(this.next, 'click', () => this.player()?.next());
-		this.registerDomEvent(this.rate, 'change', () => this.player()?.setRate(Number(this.rate.value)));
+		this.registerDomEvent(this.rate, 'change', () => this.replay.setRate(Number(this.rate.value)));
 		this.registerDomEvent(this.timeline, 'input', () => this.player()?.requestSeek(Number(this.timeline.value)));
 		this.registerDomEvent(this.timeline, 'change', () => this.player()?.commitSeek());
 		this.registerDomEvent(this.doomedButton, 'click', () => { this.doomed.toggle(); this.render(); });
@@ -109,16 +105,11 @@ export class ReplayView extends FileView {
 		const position = valid ? `Step ${state.sequence} of ${state.lastSequence}` : '';
 		this.timeline.setAttribute('aria-valuetext', state?.pendingSequence !== null && state?.pendingSequence !== undefined
 			? `Step ${state.pendingSequence} of ${state.lastSequence}` : position);
-		const text = valid ? state.text : '';
 		const display = this.doomed.display;
 		this.doomedButton.disabled = !valid;
 		this.doomedButton.setAttribute('aria-pressed', String(display?.enabled ?? false));
-		this.doomedMessage.setText(display?.message ?? '');
-		try { renderReplayText(this.text, text, display?.ranges); }
-		catch {
-			renderReplayText(this.text, text);
-			this.doomedMessage.setText('Doomed comparison is unavailable for this step.');
-		}
+		if (valid && player && status.path) this.document.show(player, { text: state.text, path: status.path }, display);
+		else this.document.clear();
 	}
 
 	onLoadFile(file: TFile): Promise<void> { return this.replay.open(file.path); }
@@ -142,6 +133,7 @@ export class ReplayView extends FileView {
 		this.unsubscribe?.();
 		this.unsubscribe = undefined;
 		this.doomed.dispose();
+		this.removeChild(this.document);
 		this.replay.dispose();
 		this.disposed();
 		this.contentEl.empty();

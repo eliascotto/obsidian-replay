@@ -7,6 +7,7 @@ Replay records the writing process in an Obsidian Markdown note so it can be wat
 - Explicit per-note recording with Start, Stop, and continuation across sessions.
 - A visible `<note-name>.replay` file automatically created beside each recorded note.
 - Native file tabs: select a `.replay` file in **Files** to play, step, seek, change speed, or enable **Doomed** highlighting.
+- Read-only Markdown preview using Obsidian's renderer, with native headings, lists, tables, and callouts.
 - Self-contained readable JSON: copy the `.replay` file alone into another vault with Replay enabled to watch it.
 - Local/offline operation; no uploads, telemetry, accounts, or external services.
 
@@ -47,12 +48,15 @@ A save/publication error pauses capture and preserves the durable history for re
 Select the `.replay` file in **Files** to open its read-only player with the history icon. For example, `Essays/Article.md` creates `Essays/Article.replay`. Each file opens as a normal Obsidian file tab; multiple recordings can be open independently.
 
 - Select **Play/Pause**, **Previous step**, or **Next step**, or drag the thin timeline. At the end, **Restart** rewinds to the start, paused. In the replay view, **Space** plays, pauses, or restarts; **Left/Right** move one step. Manual navigation pauses playback. The speed selector keeps its normal keyboard controls.
-- Choose 0.5×, 1×, 2×, 3×, or 4×. At 1× playback advances one recorded edit every 150 ms (about 6.67 edits per second), matching the [13 Sentences demo](https://byronm.com/13sentences.html). Original pauses take no playback time.
-- Toggle **Doomed** to highlight selected-state text that differs from the file's final recorded text.
+- Choose 0.5×, 1×, 2×, 3×, or 4×. The chosen speed is shared across replay tabs and saved locally for other files and future Obsidian sessions. At 1× playback advances one recorded edit every 150 ms (about 6.67 edits per second), matching the [13 Sentences demo](https://byronm.com/13sentences.html). Original pauses take no playback time.
+- Ordinary Markdown uses Obsidian's Reading view styling. Scroll, select, and copy text; task checkboxes and content editing are disabled. Internal links open separately, using the `.replay` file's folder as context.
+- Toggle **Doomed** to show exact Markdown source with highlights for text that differs from the file's final recorded text. Turn it off to return to the formatted preview without moving the timeline or changing playback.
 - Switch back to the Markdown tab to write. Playback never modifies the live note.
 - Copy/share the ordinary `.replay` file using your normal file tools. A recipient with Replay enabled can open it without your source note, hidden recording folder, or vault.
 
 There is no separate export dialog or export/open-replay button. Existing command IDs remain compatible: **Replay: Open recording file** opens the sibling; **Replay: Refresh recording file** repairs/refreshes it from stopped local history. Standalone files are playback-only and are not adopted as editable recording sessions.
+
+Recorded HTML, images/embeds, named code fences (including plugin queries), and inline query syntax display as exact source with a short explanation. This conservative check runs before native rendering, so those constructs cannot automatically load resources or invoke their code-block processors through Replay. Unnamed fenced code renders normally. A failed Markdown preview also falls back to source while playback remains usable. Ordinary Markdown uses Obsidian's installed rendering pipeline; arbitrary third-party post-processor behavior is outside Replay's control. Attachments and other notes are not included as historical snapshots in a `.replay` file.
 
 Hosted sharing, uploads, video export, and a standalone browser viewer are not implemented.
 

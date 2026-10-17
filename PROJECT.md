@@ -81,6 +81,12 @@ Recording and replay remain mutually exclusive for the same locally managed reco
 
 The replay displays the same note as it existed at the selected recorded point, in a read-only viewing surface. Watching or navigating a recording must not save historical text over the live document or generate recorded edits.
 
+By default, render ordinary Markdown through Obsidian's public Markdown renderer with Reading view typography. Keep the `.replay` file tab and playback toolbar; do not create a temporary Markdown file or attach historical text to the live note's editor. Users can scroll, select, copy, and explicitly follow links, but cannot type, paste, drop content, or change task checkboxes in the replay surface.
+
+Enabling **Doomed** temporarily shows exact Markdown source with its highlights and the explanation **Showing source for Doomed highlights.** Disabling it returns to rendered Markdown at the same selected state and playback rate, without changing playback status. This preserves differences in syntax and other source characters that formatted Markdown can hide.
+
+Use exact-source fallback for recorded HTML, embeds/images, named code fences, and inline query syntax before calling the renderer; these may load resources or invoke active Markdown processors. Unnamed fenced code remains renderable. Renderer failure also falls back to the selected source without stopping playback. Explain each fallback briefly. Normal Markdown rendering uses the installed Obsidian rendering pipeline; compatibility with arbitrary third-party post-processors is not guaranteed. Replay adds no network calls or code execution. Link context is the recording's actual vault path, with no requirement for the source note or inferred recording ownership.
+
 Dragging the timeline updates the displayed text to the selected point. Manual navigation pauses automatic playback. Previous and next move by one recorded text-change step; a resume transition counts as one step. Both the initial and final recorded states must be reachable.
 
 Playback starts at the selected position, advances through the recorded changes at a steady adjustable edit rate, and stops at the end. Playback rate controls the number of recorded steps shown per unit of playback time. A paste, replacement, or resume transition is one recorded step even if it changes many characters.
@@ -92,6 +98,8 @@ Original typing delays and pauses take no playback time. Stopping today and resu
 Playback and the timeline use recorded-step progression, so dragging to a position and playing through that position show the same state. Timeline positions represent recorded steps rather than elapsed real-world time. At a given playback rate, the replay duration depends on the number of steps. Wall-clock timestamps may be retained as metadata but do not determine playback timing or timeline spacing.
 
 The default rate and available rate controls are UI decisions. There is no requirement for an original-timing playback mode or an idle-gap threshold.
+
+The selected playback rate is shared across open replay tabs and saved in the plugin's local preferences. Newly opened files and future Obsidian sessions use the saved rate; missing or unsupported values default to 1×. Rate preferences are not part of portable recording files.
 
 ## Doomed highlighting
 

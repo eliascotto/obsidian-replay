@@ -7,6 +7,7 @@ import { artifactPath } from '../artifacts/paths';
 import { ReplayFileController } from '../replay/file-controller';
 import { remap } from '../storage/records';
 import { ReplayView, REPLAY_VIEW_TYPE } from './replay-view';
+import type { ReplayPreferences } from '../settings';
 
 export class ReplayWorkspace {
 	private players = new Set<ReplayFileController>();
@@ -14,7 +15,7 @@ export class ReplayWorkspace {
 	private migrationTimer: unknown;
 
 	constructor(private plugin: Plugin, private recordings: RecordingController, private store: RecordingStore,
-		private artifacts: ArtifactPublisher, private clock: Scheduler) {
+		private artifacts: ArtifactPublisher, private clock: Scheduler, preferences: ReplayPreferences) {
 		plugin.registerView(REPLAY_VIEW_TYPE, (leaf) => {
 			const player = new ReplayFileController(async (path) => {
 				// Ownership errors block publication, not reading a standalone portable file.
@@ -25,7 +26,7 @@ export class ReplayWorkspace {
 			}, clock, (path) => {
 				const source = artifacts.owner(path);
 				return source !== null && !['absent', 'stopped'].includes(recordings.status(source));
-			});
+			}, preferences);
 			this.players.add(player);
 			return new ReplayView(leaf, player, (path) => this.ensure(path), () => this.players.delete(player));
 		});

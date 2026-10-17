@@ -2,6 +2,7 @@
 	display: flex;
 	flex-direction: column;
 	gap: var(--size-4-3);
+	overflow: hidden;
 }
 
 button.replay-icon-button {
@@ -131,8 +132,12 @@ button.replay-icon-button:disabled {
 
 .replay-toolbar .replay-rate {
 	flex: 0 0 auto;
-	width: calc(4ch + var(--size-4-5));
-	padding-inline: var(--size-2-2) var(--size-4-4);
+	width: auto;
+	min-width: 0;
+	padding: var(--size-2-1) calc(var(--size-4-2) - var(--size-2-1));
+	line-height: 1.4;
+	background-image: none;
+	text-align: center;
 }
 
 .replay-message {
@@ -148,15 +153,30 @@ button.replay-icon-button:disabled {
 	flex: 1 1 auto;
 	min-height: 0;
 	margin: 0;
-	padding: var(--size-4-3);
 	overflow: auto;
-	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 	color: var(--text-normal);
-	background: var(--background-secondary);
 }
 
-.replay-document code {
+.replay-document.markdown-preview-view {
+	padding: var(--file-margins);
+	background: var(--background-primary);
+}
+
+.replay-document > .markdown-preview-sizer {
+	min-height: 100%;
+	max-width: var(--file-line-width);
+	margin-inline: auto;
+}
+
+.replay-source {
+	margin: 0;
+	padding: var(--size-4-3);
+	white-space: pre-wrap;
+	background: var(--background-primary);
+}
+
+.replay-source code {
 	white-space: inherit;
 	font-family: var(--font-monospace);
 }
