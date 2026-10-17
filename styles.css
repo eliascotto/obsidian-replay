@@ -1,0 +1,116 @@
+.replay-recording-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--size-4-2);
+	padding: var(--size-4-2) var(--size-4-3);
+	border-bottom: 1px solid var(--background-modifier-border);
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+	flex: 0 0 auto;
+	flex-wrap: wrap;
+}
+
+.replay-recording-bar [hidden] {
+	display: none;
+}
+
+.replay-recording-bar[data-recording-state="recording"] > span {
+	color: var(--text-error);
+	font-weight: var(--font-semibold);
+}
+
+.replay-recording-bar[data-recording-state="error"] > span {
+	color: var(--text-error);
+}
+
+.replay-recording-bar > span {
+	flex: 1 1 auto;
+}
+
+.replay-history-view {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-3);
+}
+
+.replay-history-view h2 {
+	margin: 0;
+	overflow-wrap: anywhere;
+	font-size: var(--font-ui-medium);
+}
+
+.replay-playback-controls {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+
+.replay-history-view button, .replay-history-view select {
+	min-height: var(--input-height);
+}
+
+.replay-timeline {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-2);
+}
+
+.replay-timeline input {
+	width: 100%;
+	min-height: var(--input-height);
+}
+
+.replay-position, .replay-message {
+	color: var(--text-muted);
+	font-size: var(--font-ui-small);
+}
+
+.replay-message:empty {
+	display: none;
+}
+
+.replay-document {
+	flex: 1 1 auto;
+	min-height: 0;
+	margin: 0;
+	padding: var(--size-4-3);
+	overflow: auto;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	color: var(--text-normal);
+	background: var(--background-secondary);
+}
+
+.replay-document code {
+	white-space: inherit;
+	font-family: var(--font-monospace);
+}
+
+.replay-history-view :focus-visible {
+	outline: 2px solid var(--interactive-accent);
+	outline-offset: 2px;
+}
+
+.replay-doomed-text {
+	background-color: rgba(var(--color-yellow-rgb, 236, 178, 44), 0.3);
+	color: inherit;
+	border-radius: 2px;
+	box-decoration-break: clone;
+}
+
+.replay-playback-controls button[aria-pressed="true"] {
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.replay-export input {
+	display: block;
+	width: 100%;
+	margin-top: var(--size-4-2);
+}
+
+.replay-export p {
+	overflow-wrap: anywhere;
+}

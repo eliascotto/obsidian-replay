@@ -1,0 +1,51 @@
+{
+  "format": "obsidian-replay",
+  "formatVersion": 1,
+  "initialText": "abcdef",
+  "steps": [
+    {
+      "sequence": 1,
+      "kind": "edit",
+      "changes": [
+        {
+          "fromBefore": 0,
+          "toBefore": 1,
+          "fromAfter": 0,
+          "toAfter": 2,
+          "deletedText": "a",
+          "insertedText": "AA"
+        },
+        {
+          "fromBefore": 3,
+          "toBefore": 5,
+          "fromAfter": 4,
+          "toAfter": 5,
+          "deletedText": "de",
+          "insertedText": "!"
+        }
+      ]
+    },
+    {
+      "sequence": 2,
+      "kind": "edit",
+      "changes": [
+        {
+          "fromBefore": 2,
+          "toBefore": 3,
+          "fromAfter": 2,
+          "toAfter": 2,
+          "deletedText": "b",
+          "insertedText": ""
+        },
+        {
+          "fromBefore": 3,
+          "toBefore": 4,
+          "fromAfter": 2,
+          "toAfter": 2,
+          "deletedText": "c",
+          "insertedText": ""
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "id": "replay",
+  "name": "Replay",
+  "version": "0.1.0",
+  "minAppVersion": "1.7.2",
+  "description": "Record and replay the complete evolution of your notes.",
+  "author": "Elia Scotto",
+  "isDesktopOnly": false
+}

@@ -1,0 +1,35 @@
+{
+  "format": "obsidian-replay",
+  "formatVersion": 1,
+  "initialText": "The cat sleeps.",
+  "steps": [
+    {
+      "sequence": 1,
+      "kind": "edit",
+      "changes": [
+        {
+          "fromBefore": 4,
+          "toBefore": 7,
+          "fromAfter": 4,
+          "toAfter": 7,
+          "deletedText": "cat",
+          "insertedText": "dog"
+        }
+      ]
+    },
+    {
+      "sequence": 2,
+      "kind": "edit",
+      "changes": [
+        {
+          "fromBefore": 7,
+          "toBefore": 14,
+          "fromAfter": 7,
+          "toAfter": 7,
+          "deletedText": " sleeps",
+          "insertedText": ""
+        }
+      ]
+    }
+  ]
+}

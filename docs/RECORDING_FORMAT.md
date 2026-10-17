@@ -1,0 +1,305 @@
+# Replay recording format, version 1
+
+This is the portable recording contract used by [PLAN.md](PLAN.md) and the pure modules in `src/recording/`. It describes a readable, uncompressed JSON file, conventionally named `<note-name>.replay.json`. The plugin implements playback, Doomed, and stopped-recording export using this contract.
+
+## File structure
+
+The root object requires `format: "obsidian-replay"`, `formatVersion: 1`, an `initialText` string, and a `steps` array. An empty array is valid: starting and stopping without edits still records the complete initial document.
+
+Each step requires a positive safe-integer `sequence`, a `kind` of `edit` or `resume`, and a nonempty `changes` array. Sequences must be exactly `1, 2, …` in array order. At least one change must actually change text. A step may contain several simultaneous changes; it remains one playback and navigation step.
+
+Each change contains:
+
+| Field | Meaning |
+| --- | --- |
+| `fromBefore`, `toBefore` | Half-open range `[fromBefore, toBefore)` in the complete document before the step. |
+| `fromAfter`, `toAfter` | Half-open range in the complete document after the step. |
+| `deletedText` | Exact text in the before range; empty for insertion. |
+| `insertedText` | Exact text in the after range; empty for deletion. |
+
+All offsets and string lengths use JavaScript UTF-16 code units, not Unicode code points or grapheme counts. For example, `😀` occupies two units. Do not normalize Unicode, whitespace, or line endings. JSON escaping is ordinary syntax; the decoded strings preserve the original captured text, including tabs, CRLF, and lone surrogate code units.
+
+No timestamps, note IDs, vault paths, snapshots, compiled code, or external resources are needed. Unknown additional fields may be read and ignored by version 1 readers; the serializer writes only the documented fields. Unknown format identifiers, versions, or step kinds are rejected. Changing required semantics requires a new version.
+
+## Coordinate invariants
+
+1. All offsets are nonnegative safe integers. Each start is at most its corresponding end, and ranges fit their respective documents.
+2. `toBefore - fromBefore === deletedText.length` and `toAfter - fromAfter === insertedText.length`.
+3. Changes are in strictly increasing `fromBefore` order. Their before ranges and after ranges cannot overlap. Adjacent ranges are allowed.
+4. For each change, `fromAfter` equals `fromBefore` plus the sum of `insertedText.length - deletedText.length` for all preceding changes. This and the length rules determine `toAfter`.
+5. Same-position before changes must be coalesced into a single replacement by the producer; readers reject ambiguous duplicate starts. Adjacent deletions may share an after start. Keep their original array order for deterministic reversal.
+6. Every deleted string must match its exact range in the unchanged before document. Reversal checks every inserted string against the unchanged after document.
+
+Validate the entire step before modifying an in-memory string. A malformed step cannot produce a partially accepted historical state.
+
+## Reconstruction and reversal
+
+Sequence `0` is `initialText`. To reach sequence `n`, apply steps `1` through `n`. Reject negative, fractional, missing, or out-of-range sequence selections.
+
+For forward application, validate every change against the original before state, then iterate the changes array from last to first, replacing each before range with `insertedText`.
+
+For reversal, validate against the original after state, then iterate the array from last to first, replacing each after range with `deletedText`. Iterating backwards also resolves ties between after starts created by adjacent deletions. Neither operation sorts or mutates the stored changes.
+
+Before accepting an exported recording, validate its complete shape and replay every step, not just the prefix currently displayed. JSON syntax errors, invalid ranges, text mismatches, and unsupported versions fail explicitly. The pure `getStateAt` function checks the recording shape and sequence order, then validates the steps it traverses; use `parseRecording` to fully validate an external file first.
+
+## Resume semantics
+
+A `resume` step must contain exactly one change spanning the whole preceding document and the whole resulting document. It moves directly from the last recorded state to the current live document after unrecorded work. The missing edits are not inferred. If the texts are equal, the producer adds no resume step.
+
+Resuming keeps the original initial state and earlier steps in the same recording. The new endpoint becomes the final state at the next Stop. Persistent recording state and the note-to-recording association belong to local storage, outside this portable format.
+
+## Playback and Doomed
+
+Playback advances at an adjustable steady number of steps per second. Every step gets the same interval, including multi-change edits, large pastes, and resume replacements. Original typing delays and inactive periods contribute no waiting time. A timeline selects sequences from `0` to `steps.length`.
+
+The final state is the reconstruction at `steps.length`. Doomed is a deterministic text comparison between the selected state and that final state: highlight deleted/replaced ranges on the selected-state side, leaving unchanged spans clear. Do not insert final-only text into a historical display. Character provenance is irrelevant. Identical states have no doomed text even if intervening edits deleted and retyped it. The plugin now implements this as a local, deterministic Myers-style comparison over Unicode code points. It trims exact common prefixes and suffixes, then prefers deletion when frontier positions tie. Prefix trimming retains the earliest equal prefix; suffix trimming retains an equal ending without overlapping that prefix. There is no whitespace normalization, word expansion, move detection, or semantic cleanup. Ranges are half-open UTF-16 offsets into the selected string, merged when adjacent. Combining marks, ZWJ sequences, and variation selectors can be compared as separate code points; surrogate pairs are never split, and the original text is always preserved exactly.
+
+Representative historical-side alignments:
+
+| Selected text | Final text | Highlighted selected text / UTF-16 ranges |
+| --- | --- | --- |
+| `The cat sleeps.` | `The dog sleeps.` | `cat`, `[4, 7)` |
+| `abc` | `aNEWbc!` | None; final-only insertions are not displayed. |
+| `aaaa` | `aa` | The last two letters, `[2, 4)`. |
+| `ab` | `ba` | The first `a`, `[0, 1)`; the historical `b` is retained. |
+| `one two` | `two one` | `one `, `[0, 4)`; moved text has no special identity. |
+| `draft` | `final` | `dra` and `t`, `[0, 3)` and `[4, 5)`; `f` is retained by the character alignment. |
+| `x😀y` | `xy` | The complete emoji, `[1, 3)`. |
+| `e` followed by U+0301 | `e` | Only the combining accent, `[1, 2)`; no normalization. |
+
+These are the plugin's current alignment rules, not extra persisted fields or a version change. A consumer needs only the two reconstructed strings to compute Doomed; it need not inspect intervening edits or vault data.
+
+Comparison work is bounded per selected step. Nontrivial inputs are limited to 500,000 combined UTF-16 code units, 500,000 frontier/snake operations, and 131,072 stored 32-bit frontier cells (at most 512 KiB of trace cells, plus bounded token/offset arrays). Identical strings, empty selected text, and an empty final state have direct results without the tokenized diff. Exhausting a limit is an explicit unavailable result, not a successful empty diff or an approximate whole-block highlight. The view then displays plain exact historical text and a short message while normal playback/navigation remains usable.
+
+The presentation cache belongs to the loaded replay player, holds at most 16 step results and 4,096 highlight ranges, and reuses the current result across unrelated control updates. It stores no historical document copies, disk snapshots, or portable metadata. New player bindings, including Resume/Stop/reopen or a rename reload, clear it and reset the toggle. Rendering creates only text nodes and highlight spans in the owning document; no recorded markup is interpreted as HTML.
+
+## Errors and serialization
+
+The implementation exposes `RecordingError` with a stable `code`: `format`, `version`, `sequence`, `range`, or `text-mismatch`. Optional location fields are `stepIndex` (zero-based array index), `sequence`, and `changeIndex` (zero-based within the step). Error messages do not include document text.
+
+`parseRecording` checks JSON syntax, runtime types, and full reconstruction. `serializeRecording` validates the complete recording, writes only portable fields in the order shown below, uses two-space indentation, and adds one trailing newline. No compression, Base64, or opaque binary payload is used. Export intentionally includes deleted and superseded writing.
+
+## Saving and verifying an export
+
+**Export recording** saves this JSON as one new `.replay.json` file in a user-visible vault location. The default is beside the note; another existing vault folder/name may be entered. Existing destinations, configuration/plugin/trash paths, absolute paths, and traversal are rejected. No native desktop dialog, Node/Electron filesystem access, upload, or external resource is required.
+
+The producer reads a validated stopped snapshot, serializes only the version 1 fields, and rechecks source readiness/revision before invoking file creation. The selected replay step and Doomed spans are never export data. If writing has already started when recording resumes or the dialog closes, the saved artifact remains the captured earlier stopped revision. The plugin verifies exact readback, parses the complete JSON again, and checks its initial/endpoint text and step count before reporting success.
+
+To verify portability, take only the exported file: call `parseRecording`, reconstruct sequences `0..steps.length` with `getStateAt`, reverse the steps with `reverseStep`, and compare any state against the reconstructed endpoint using `compareDoomed`. No note path, recording ID, storage directory, live text, or Obsidian object is an input to that consumer. Viewer comparison limits can return an unavailable highlight result without invalidating the recording itself.
+
+Export includes earlier deleted/superseded writing and preserves literal document strings, even when those strings contain filenames or identifiers. Source-history metadata is excluded as extra fields; document contents are not redacted. This remains format version 1 and is uncompressed.
+
+## Tested examples
+
+The following JSON examples are identical to fixtures under `tests/recording/fixtures/`. Automated tests parse the documentation's examples and verify every expected state in both directions.
+
+### Initial document only
+
+Sequence 0 is `An existing article.\r\nSecond line.` (the escape sequences denote the actual CRLF). There are no later states.
+
+```json
+{
+  "format": "obsidian-replay",
+  "formatVersion": 1,
+  "initialText": "An existing article.\r\nSecond line.",
+  "steps": []
+}
+```
+
+### Insertions
+
+Sequence 0 is empty; sequence 1 is `Hello`; sequence 2 is `Hello, world!`.
+
+```json
+{
+  "format": "obsidian-replay",
+  "formatVersion": 1,
+  "initialText": "",
+  "steps": [
+    {
+      "sequence": 1,
+      "kind": "edit",
+      "changes": [
+        {
+          "fromBefore": 0,
+          "toBefore": 0,
+          "fromAfter": 0,
+          "toAfter": 5,
+          "deletedText": "",
+          "insertedText": "Hello"
+        }
+      ]
+    },
+    {
+      "sequence": 2,
+      "kind": "edit",
+      "changes": [
+        {
+          "fromBefore": 5,
+          "toBefore": 5,
+          "fromAfter": 5,
+          "toAfter": 13,
+          "deletedText": "",
+          "insertedText": ", world!"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Replacement and deletion
+
+Sequence 0 is `The cat sleeps.`; sequence 1 is `The dog sleeps.`; sequence 2 is `The dog.`.
+
+```json
+{
+  "format": "obsidian-replay",
+  "formatVersion": 1,
+  "initialText": "The cat sleeps.",
+  "steps": [
+    {
+      "sequence": 1,
+      "kind": "edit",
+      "changes": [
+        {
+          "fromBefore": 4,
+          "toBefore": 7,
+          "fromAfter": 4,
+          "toAfter": 7,
+          "deletedText": "cat",
+          "insertedText": "dog"
+        }
+      ]
+    },
+    {
+      "sequence": 2,
+      "kind": "edit",
+      "changes": [
+        {
+          "fromBefore": 7,
+          "toBefore": 14,
+          "fromAfter": 7,
+          "toAfter": 7,
+          "deletedText": " sleeps",
+          "insertedText": ""
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Multiple changes and adjacent deletions
+
+Sequence 0 is `abcdef`; sequence 1 is `AAbc!f`; sequence 2 is `AA!f`. Step 1 includes an expansion before another replacement. Step 2 tests adjacent deletions whose after starts are both 2.
+
+```json
+{
+  "format": "obsidian-replay",
+  "formatVersion": 1,
+  "initialText": "abcdef",
+  "steps": [
+    {
+      "sequence": 1,
+      "kind": "edit",
+      "changes": [
+        {
+          "fromBefore": 0,
+          "toBefore": 1,
+          "fromAfter": 0,
+          "toAfter": 2,
+          "deletedText": "a",
+          "insertedText": "AA"
+        },
+        {
+          "fromBefore": 3,
+          "toBefore": 5,
+          "fromAfter": 4,
+          "toAfter": 5,
+          "deletedText": "de",
+          "insertedText": "!"
+        }
+      ]
+    },
+    {
+      "sequence": 2,
+      "kind": "edit",
+      "changes": [
+        {
+          "fromBefore": 2,
+          "toBefore": 3,
+          "fromAfter": 2,
+          "toAfter": 2,
+          "deletedText": "b",
+          "insertedText": ""
+        },
+        {
+          "fromBefore": 3,
+          "toBefore": 4,
+          "fromAfter": 2,
+          "toAfter": 2,
+          "deletedText": "c",
+          "insertedText": ""
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Resume after unrecorded work
+
+Sequence 0 is `The cat sleeps.`; sequence 1 is `The dog sleeps.`; sequence 2 jumps to `A new article.`; sequence 3 is `A new article. Done.`. Step 2 records the resumed document in one transition.
+
+```json
+{
+  "format": "obsidian-replay",
+  "formatVersion": 1,
+  "initialText": "The cat sleeps.",
+  "steps": [
+    {
+      "sequence": 1,
+      "kind": "edit",
+      "changes": [
+        {
+          "fromBefore": 4,
+          "toBefore": 7,
+          "fromAfter": 4,
+          "toAfter": 7,
+          "deletedText": "cat",
+          "insertedText": "dog"
+        }
+      ]
+    },
+    {
+      "sequence": 2,
+      "kind": "resume",
+      "changes": [
+        {
+          "fromBefore": 0,
+          "toBefore": 15,
+          "fromAfter": 0,
+          "toAfter": 14,
+          "deletedText": "The dog sleeps.",
+          "insertedText": "A new article."
+        }
+      ]
+    },
+    {
+      "sequence": 3,
+      "kind": "edit",
+      "changes": [
+        {
+          "fromBefore": 14,
+          "toBefore": 14,
+          "fromAfter": 14,
+          "toAfter": 20,
+          "deletedText": "",
+          "insertedText": " Done."
+        }
+      ]
+    }
+  ]
+}
+```

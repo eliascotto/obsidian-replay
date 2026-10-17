@@ -1,0 +1,35 @@
+{
+  "format": "obsidian-replay",
+  "formatVersion": 1,
+  "initialText": "",
+  "steps": [
+    {
+      "sequence": 1,
+      "kind": "edit",
+      "changes": [
+        {
+          "fromBefore": 0,
+          "toBefore": 0,
+          "fromAfter": 0,
+          "toAfter": 5,
+          "deletedText": "",
+          "insertedText": "Hello"
+        }
+      ]
+    },
+    {
+      "sequence": 2,
+      "kind": "edit",
+      "changes": [
+        {
+          "fromBefore": 5,
+          "toBefore": 5,
+          "fromAfter": 5,
+          "toAfter": 13,
+          "deletedText": "",
+          "insertedText": ", world!"
+        }
+      ]
+    }
+  ]
+}

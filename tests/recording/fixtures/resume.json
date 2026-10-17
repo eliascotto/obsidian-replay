@@ -1,0 +1,49 @@
+{
+  "format": "obsidian-replay",
+  "formatVersion": 1,
+  "initialText": "The cat sleeps.",
+  "steps": [
+    {
+      "sequence": 1,
+      "kind": "edit",
+      "changes": [
+        {
+          "fromBefore": 4,
+          "toBefore": 7,
+          "fromAfter": 4,
+          "toAfter": 7,
+          "deletedText": "cat",
+          "insertedText": "dog"
+        }
+      ]
+    },
+    {
+      "sequence": 2,
+      "kind": "resume",
+      "changes": [
+        {
+          "fromBefore": 0,
+          "toBefore": 15,
+          "fromAfter": 0,
+          "toAfter": 14,
+          "deletedText": "The dog sleeps.",
+          "insertedText": "A new article."
+        }
+      ]
+    },
+    {
+      "sequence": 3,
+      "kind": "edit",
+      "changes": [
+        {
+          "fromBefore": 14,
+          "toBefore": 14,
+          "fromAfter": 14,
+          "toAfter": 20,
+          "deletedText": "",
+          "insertedText": " Done."
+        }
+      ]
+    }
+  ]
+}
