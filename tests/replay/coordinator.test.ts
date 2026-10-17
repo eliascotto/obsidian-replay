@@ -13,7 +13,7 @@ void test('reopening a valid recording preserves the same player, selection, and
 	await context.replay.open('a.md');
 	assert.equal(player(context.replay), first);
 	assert.equal(context.clock.size, 1);
-	context.clock.advance(250);
+	context.clock.advance(150);
 	assert.equal(first.state.sequence, 1);
 	await context.replay.open('a.md');
 	assert.equal(first.state.sequence, 1);
@@ -107,7 +107,7 @@ void test('starting another note does not interrupt a stopped recording replay',
 	view.play();
 	await context.recordings.start('b.md', 'Other note');
 	assert.equal(player(context.replay), view);
-	context.clock.advance(250);
+	context.clock.advance(150);
 	assert.equal(view.state.sequence, 1);
 	await context.recordings.stop('b.md');
 });

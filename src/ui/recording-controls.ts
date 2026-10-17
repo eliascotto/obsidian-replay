@@ -13,17 +13,12 @@ const labels: Record<RecordingPhase, string> = {
 
 export class RecordingControls {
 	private ribbon: HTMLElement;
-	private bar: HTMLElement;
-	private label: HTMLElement;
 	private previous: TFile | null = null;
 	private disposed = false;
 
 	constructor(private plugin: Plugin, private controller: RecordingController, private bridge: EditorCaptureBridge,
 		private replay: ReplayWorkspace) {
 		this.ribbon = plugin.addRibbonIcon('circle', 'Start recording', () => this.toggle());
-		this.bar = this.ribbon.ownerDocument.createElement('div');
-		this.bar.className = 'replay-recording-bar';
-		this.label = this.bar.createSpan();
 		plugin.register(controller.subscribe(() => this.refresh()));
 		plugin.register(bridge.subscribe(() => this.refresh()));
 		plugin.registerEvent(plugin.app.workspace.on('active-leaf-change', () => this.switched()));
@@ -83,24 +78,20 @@ export class RecordingControls {
 		if (this.disposed) return;
 		const view = this.current();
 		if (!view?.file) {
-			this.bar.remove();
 			this.ribbon.setAttribute('aria-label', this.canStop() ? 'Stop recording / retry save' : 'Open a Markdown note to record');
 			this.ribbon.setAttribute('aria-disabled', String(!this.canStop()));
 			setIcon(this.ribbon, this.canStop() ? 'square' : 'circle');
 			return;
 		}
-		if (this.bar.parentElement !== view.contentEl) view.contentEl.prepend(this.bar);
 		const phase = this.controller.status(view.file.path);
 		const stop = this.canStop();
 		const action = phase === 'error' ? 'Retry save' : stop ? 'Stop recording' : 'Start recording';
-		this.label.setText(labels[phase]);
-		this.bar.setAttribute('data-recording-state', phase);
 		this.ribbon.setAttribute('aria-label', `${labels[phase]}: ${action}`);
 		this.ribbon.setAttribute('aria-disabled', String(!this.canStart() && !stop));
 		setIcon(this.ribbon, phase === 'error' ? 'alert-circle' : stop ? 'square' : 'circle');
 	}
 
-	dispose(): void { this.disposed = true; this.bar.remove(); }
+	dispose(): void { this.disposed = true; }
 }
 
 export function reportRecordingError(path: string, error: unknown): void {

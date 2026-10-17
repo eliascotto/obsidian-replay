@@ -7,6 +7,54 @@ import type { Scheduler } from '../../src/storage/types';
 import { FakeClock } from '../support/storage';
 import { fixtureStates, loadFixture, recording, spliceStep } from '../recording/helpers';
 
+void test('transport plays, pauses, and rewinds the completed recording without starting a timer', () => {
+	const clock = new FakeClock();
+	const player = new ReplayController(loadFixture('resume'), clock);
+	player.setRate(3);
+	player.togglePlayback();
+	assert.equal(player.state.playing, true);
+	clock.advance(50);
+	player.togglePlayback();
+	assert.equal(player.state.playing, false);
+	assert.equal(player.state.sequence, 1);
+	assert.equal(clock.size, 0);
+	player.togglePlayback();
+	clock.advance(1000);
+	assert.equal(player.state.sequence, player.state.lastSequence);
+	assert.equal(player.state.playing, false);
+	player.togglePlayback();
+	assert.equal(player.state.sequence, 0);
+	assert.equal(player.state.text, player.recording.initialText);
+	assert.equal(player.state.rate, 3);
+	assert.equal(player.state.playing, false);
+	assert.equal(clock.size, 0);
+	player.togglePlayback();
+	assert.equal(player.state.playing, true);
+	assert.equal(clock.size, 1);
+	player.dispose();
+});
+
+void test('transport commits a pending endpoint seek before deciding to restart and stays idle for an empty recording', () => {
+	const clock = new FakeClock();
+	const player = new ReplayController(loadFixture('resume'), clock);
+	player.requestSeek(player.state.lastSequence);
+	player.togglePlayback();
+	assert.equal(player.state.sequence, 0);
+	assert.equal(player.state.pendingSequence, null);
+	clock.advance(1000);
+	assert.equal(player.state.sequence, 0);
+	assert.equal(clock.size, 0);
+	player.dispose();
+	player.togglePlayback();
+	assert.equal(clock.size, 0);
+	const empty = new ReplayController(recording('Just the initial text'), clock);
+	empty.togglePlayback();
+	assert.equal(empty.state.playing, false);
+	assert.equal(empty.state.sequence, 0);
+	assert.equal(clock.size, 0);
+	empty.dispose();
+});
+
 for (const [name, states] of Object.entries(fixtureStates)) {
 	void test(`replay selection, forwards and backwards match every ${name} state`, () => {
 		const clock = new FakeClock();
@@ -41,7 +89,7 @@ for (const rate of PLAYBACK_RATES) {
 		player.play();
 		player.play();
 		assert.equal(clock.size, 1);
-		const interval = 250 / rate;
+		const interval = 150 / rate;
 		for (let sequence = 1; sequence <= 3; sequence++) {
 			clock.advance(interval - 1);
 			assert.equal(player.state.sequence, sequence - 1);
@@ -66,7 +114,7 @@ void test('pause retains the selected state and rate changes reschedule without 
 	player.setRate(2);
 	assert.equal(player.state.sequence, 0);
 	assert.equal(clock.size, 1);
-	clock.advance(124);
+	clock.advance(74);
 	assert.equal(player.state.sequence, 0);
 	clock.advance(1);
 	assert.equal(player.state.sequence, 1);
@@ -75,7 +123,7 @@ void test('pause retains the selected state and rate changes reschedule without 
 	assert.equal(player.state.sequence, 1);
 	assert.equal(clock.size, 0);
 	player.play();
-	clock.advance(125);
+	clock.advance(75);
 	assert.equal(player.state.sequence, 2);
 });
 
@@ -120,7 +168,7 @@ void test('committed seek, Play and previous/next agree on the requested positio
 	player.play();
 	assert.equal(player.state.sequence, 1);
 	assert.equal(clock.size, 1);
-	clock.advance(250);
+	clock.advance(150);
 	assert.equal(player.state.sequence, 2);
 	player.requestSeek(3);
 	player.previous();
@@ -184,9 +232,9 @@ void test('subscriber-triggered rate changes during a tick do not duplicate time
 		if (player.state.sequence === 1 && player.state.rate === 1) player.setRate(2);
 	});
 	player.play();
-	clock.advance(250);
+	clock.advance(150);
 	assert.equal(clock.size, 1);
-	clock.advance(125);
+	clock.advance(75);
 	assert.equal(player.state.sequence, 2);
 	assert.equal(clock.size, 0);
 });

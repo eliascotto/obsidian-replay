@@ -1,4 +1,4 @@
-# Replay
+# Obsidian Replay
 
 Replay records the writing process in an Obsidian Markdown note so it can be watched and exported for sharing, inspired by Stypi. The agreed product behavior is in [PROJECT.md](PROJECT.md); implementation progress is in [PLAN.md](docs/PLAN.md).
 
@@ -32,8 +32,8 @@ For ongoing local development, symlink those three files individually to the mat
 
 1. Open a Markdown note in editing mode.
 2. Select the recording icon in the left ribbon, use the note's file menu, or run **Replay: Start recording** from the command palette (**⌘P** on macOS, **Ctrl+P** on Windows/Linux).
-3. Replay captures the complete initial document and creates a sibling `.replay` file. Write and revise normally; the note header shows recording status without extra action buttons.
-4. Run **Replay: Stop recording / retry save** or select the ribbon/menu action. Stop saves the log and verifies the updated `.replay` file before showing **Recording stopped**.
+3. Replay captures the complete initial document and creates a sibling `.replay` file. Write and revise normally; the ribbon icon and its tooltip show recording status.
+4. Run **Replay: Stop recording / retry save** or select the ribbon/menu action. Stop saves the log and verifies the updated `.replay` file before the ribbon tooltip reports **Recording stopped**.
 5. Start again to continue the same history. Changes made while stopped become one resume transition; their missing intermediate edits cannot be recovered.
 
 **The `.replay` file includes deleted and superseded writing.** It initially contains the starting text and is refreshed after each completed Stop. During recording it retains the last published snapshot, and its locally managed player is disabled. Copy/share it only after Stop finishes.
@@ -46,8 +46,8 @@ A save/publication error pauses capture and preserves the durable history for re
 
 Select the `.replay` file in **Files** to open its read-only player with the history icon. For example, `Essays/Article.md` creates `Essays/Article.replay`. Each file opens as a normal Obsidian file tab; multiple recordings can be open independently.
 
-- Select **Play/Pause**, **Previous step**, or **Next step**, or drag the thin timeline. Manual navigation pauses playback; timeline arrow keys move by one step.
-- Choose 0.5×, 1×, 2×, 3×, or 4×. At 1× playback advances four edits per second. Original pauses take no playback time.
+- Select **Play/Pause**, **Previous step**, or **Next step**, or drag the thin timeline. At the end, **Restart** rewinds to the start, paused. In the replay view, **Space** plays, pauses, or restarts; **Left/Right** move one step. Manual navigation pauses playback. The speed selector keeps its normal keyboard controls.
+- Choose 0.5×, 1×, 2×, 3×, or 4×. At 1× playback advances one recorded edit every 150 ms (about 6.67 edits per second), matching the [13 Sentences demo](https://byronm.com/13sentences.html). Original pauses take no playback time.
 - Toggle **Doomed** to highlight selected-state text that differs from the file's final recorded text.
 - Switch back to the Markdown tab to write. Playback never modifies the live note.
 - Copy/share the ordinary `.replay` file using your normal file tools. A recipient with Replay enabled can open it without your source note, hidden recording folder, or vault.

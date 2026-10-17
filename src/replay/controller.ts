@@ -3,7 +3,7 @@ import { RecordingError } from '../recording/errors';
 import type { RecordingFile } from '../recording/types';
 import { validateRecordingShape } from '../recording/validation';
 import type { Scheduler } from '../storage/types';
-import { BASE_STEPS_PER_SECOND, PLAYBACK_RATES, type ReplayState } from './types';
+import { BASE_STEP_INTERVAL_MS, PLAYBACK_RATES, type ReplayState } from './types';
 
 export class ReplayController {
 	readonly recording: RecordingFile;
@@ -121,6 +121,15 @@ export class ReplayController {
 		this.changed();
 	}
 
+	/** The transport action rewinds at the endpoint, ready for another play. */
+	togglePlayback(): void {
+		this.commitSeek();
+		if (this.disposed || this.error || this.recording.steps.length === 0) return;
+		if (this.playing) this.pause();
+		else if (this.sequence === this.recording.steps.length) this.select(0);
+		else this.play();
+	}
+
 	pause(): void { this.commitSeek(); this.stopClock(); this.changed(); }
 
 	setRate(rate: number): void {
@@ -150,7 +159,7 @@ export class ReplayController {
 			this.tick = undefined;
 			this.move(this.sequence + 1);
 			if (this.playing) this.schedule();
-		}, 1000 / (BASE_STEPS_PER_SECOND * this.rate));
+		}, BASE_STEP_INTERVAL_MS / this.rate);
 	}
 
 	dispose(): void {

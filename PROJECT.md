@@ -75,7 +75,7 @@ Register `.replay` as a custom file extension. Selecting a valid `.replay` file 
 - A draggable **timeline** showing the selected position.
 - A **Doomed** toggle.
 
-Keep **Start recording / Stop recording** in the ribbon, note file menu, command palette, and two configurable keyboard shortcuts. Remove the recording action, open-replay action, and export action from the note header; remove export from the player. A compact, non-interactive recording/saving/error status may remain above the note. Configure shortcuts through **Settings → Hotkeys**. The `.replay` view and tab use the existing Lucide `history` icon, previously used for **Open replay**.
+Keep **Start recording / Stop recording** in the ribbon, note file menu, command palette, and two configurable keyboard shortcuts. Remove the recording action, open-replay action, and export action from the note header; remove export from the player. Show recording/saving/error status through the ribbon icon and tooltip; do not add a status bar above the note. Configure shortcuts through **Settings → Hotkeys**. The `.replay` view and tab use the existing Lucide `history` icon, previously used for **Open replay**.
 
 Recording and replay remain mutually exclusive for the same locally managed recording. While its source note is starting, recording, saving, or in an unresolved save error, pause and disable its `.replay` player. A successful Stop refreshes that file and enables replay without starting playback. A copied or shared recording has no dependency on a source note and plays independently. Never infer a recording association from a matching filename alone.
 

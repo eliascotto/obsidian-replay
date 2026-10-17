@@ -19,7 +19,7 @@ void test('a standalone portable file plays without any note/store and each view
 	await a.open('Shared.replay'); await b.open('Another.replay');
 	assert.equal(a.state.phase, 'ready'); assert.equal(b.state.phase, 'ready');
 	if (a.state.phase !== 'ready' || b.state.phase !== 'ready') return;
-	a.state.player.next(); a.state.player.play(); clock.advance(250);
+	a.state.player.next(); a.state.player.play(); clock.advance(150);
 	assert.equal(a.state.player.state.sequence, 2);
 	assert.equal(b.state.player.state.sequence, 0);
 	a.dispose(); b.dispose();

@@ -1,4 +1,4 @@
-import { FileView, type TFile, type WorkspaceLeaf, type ViewStateResult } from 'obsidian';
+import { FileView, Scope, type TFile, type WorkspaceLeaf, type ViewStateResult } from 'obsidian';
 import type { ReplayFileController } from '../replay/file-controller';
 import { renderReplayText } from './replay-text';
 import { PLAYBACK_RATES } from '../replay/types';
@@ -23,7 +23,14 @@ export class ReplayView extends FileView {
 
 	constructor(leaf: WorkspaceLeaf, private replay: ReplayFileController,
 		private legacyFile: (path: string) => Promise<string>, private disposed: () => void,
-	) { super(leaf); }
+	) {
+		super(leaf);
+		const scope = this.scope = new Scope(this.app.scope);
+		for (const key of [' ', 'ArrowLeft', 'ArrowRight']) {
+			const handler = scope.register([], key, (event) => this.handleKey(event));
+			this.register(() => scope.unregister(handler));
+		}
+	}
 
 	getViewType(): string { return REPLAY_VIEW_TYPE; }
 	getDisplayText(): string { return this.file?.basename ?? 'Replay'; }
@@ -49,10 +56,7 @@ export class ReplayView extends FileView {
 		const document = this.contentEl.createEl('pre', { cls: 'replay-document', attr: { tabindex: '0' } });
 		document.contentEditable = 'false';
 		this.text = document.createEl('code');
-		this.registerDomEvent(this.play, 'click', () => {
-			const player = this.player();
-			if (player?.state.playing) player.pause(); else player?.play();
-		});
+		this.registerDomEvent(this.play, 'click', () => this.player()?.togglePlayback());
 		this.registerDomEvent(this.previous, 'click', () => this.player()?.previous());
 		this.registerDomEvent(this.next, 'click', () => this.player()?.next());
 		this.registerDomEvent(this.rate, 'change', () => this.player()?.setRate(Number(this.rate.value)));
@@ -67,6 +71,18 @@ export class ReplayView extends FileView {
 
 	private player() { return this.replay.state.phase === 'ready' ? this.replay.state.player : undefined; }
 
+	private handleKey(event: KeyboardEvent): boolean {
+		const target = event.target as HTMLElement | null;
+		if (event.isComposing || target?.closest?.('select, textarea, input:not([type="range"]), [contenteditable="true"], [role="textbox"]')) return true;
+		const player = this.player();
+		if (!player || player.state.error) return true;
+		if (event.key === ' ') {
+			if (!event.repeat) player.togglePlayback();
+		} else if (event.key === 'ArrowLeft') player.previous();
+		else if (event.key === 'ArrowRight') player.next();
+		return false;
+	}
+
 	private render(): void {
 		if (!this.ready) return;
 		const status = this.replay.state;
@@ -76,10 +92,13 @@ export class ReplayView extends FileView {
 		this.doomed.bind(valid ? player : undefined);
 		this.message.setText(status.phase === 'loading' ? 'Loading recording…' :
 			status.phase === 'unavailable' ? status.message : state?.error ?? (status.phase === 'idle' ? 'Open a stopped recording to replay it.' : ''));
-		this.previous.disabled = !valid || state.sequence === 0;
-		this.next.disabled = !valid || state.sequence === state.lastSequence;
-		this.play.disabled = !valid || (!state.playing && state.sequence === state.lastSequence);
-		updateIconButton(this.play, state?.playing ? 'pause' : 'play', state?.playing ? 'Pause' : 'Play');
+		const sequence = state?.pendingSequence ?? state?.sequence ?? 0;
+		const atEnd = valid && sequence === state.lastSequence;
+		this.previous.disabled = !valid || sequence === 0;
+		this.next.disabled = !valid || atEnd;
+		this.play.disabled = !valid || state.lastSequence === 0;
+		updateIconButton(this.play, state?.playing ? 'pause' : atEnd ? 'rotate-ccw' : 'play',
+			state?.playing ? 'Pause' : atEnd ? 'Restart' : 'Play');
 		this.rate.disabled = !valid;
 		this.rate.value = String(state?.rate ?? 1);
 		this.timeline.disabled = !valid || state.lastSequence === 0;

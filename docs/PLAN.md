@@ -116,7 +116,7 @@ Export contains ordinary readable JSON text with normal JSON escaping. No Base64
 
 ## Recording lifecycle and capture
 
-Preserve stable local command IDs `start-recording`, `stop-recording`, `open-history`, and `export-recording`. Obsidian prefixes them with the plugin ID. Milestone 6 removes header action buttons, retains non-interactive recording state, and adds Start/Stop default shortcut proposals configurable through native **Settings → Hotkeys**. Older open/export command IDs become compatibility routes to the managed file, not a second replay/export implementation.
+Preserve stable local command IDs `start-recording`, `stop-recording`, `open-history`, and `export-recording`. Obsidian prefixes them with the plugin ID. Milestone 6 removes header action buttons, removes the note status bar and retains status in the ribbon icon/tooltip, and adds Start/Stop default shortcut proposals configurable through native **Settings → Hotkeys**. Older open/export command IDs become compatibility routes to the managed file, not a second replay/export implementation.
 
 The controller distinguishes no recording, recording, and stopped. A stopped recording may be viewed paused or playing. Serialize start, stop, replay, and export operations so rapid interactions cannot create duplicate recordings or race a pending write.
 
@@ -165,7 +165,7 @@ Expose Play/Pause, playback rate, previous/next step, a slider from `0` to the l
 
 Manual navigation pauses playback. Play advances incrementally from the selected step to the endpoint, then stops. Previous/next move exactly one step, including resume replacements. Empty step lists still allow viewing/exporting the initial state; Play cannot advance them.
 
-Use a steady adjustable steps-per-second rate. The current UI uses 4 steps/second at 1×, with 0.5×, 1×, 2×, 3×, and 4× controls. Each step receives the same interval at the chosen rate, including large pastes and resume transitions. Original typing delays, overnight gaps, and stopped intervals add no waiting time.
+Use a steady adjustable steps-per-second rate. The current UI uses 150 ms/step at 1× (about 6.67 steps/second), matching the [13 Sentences demo](https://byronm.com/13sentences.html), with 0.5×, 1×, 2×, 3×, and 4× controls. Each step receives the same interval at the chosen rate, including large pastes and resume transitions. Original typing delays, overnight gaps, and stopped intervals add no waiting time.
 
 The slider represents step sequence, not wall-clock time. Avoid stale renders during rapid scrubbing; a small disposable reconstruction cache is allowed. Clear playback timers on pause, navigation, endpoint, resume, view close, unload, and errors. Persistent reconstruction snapshots are outside the MVP.
 
@@ -477,7 +477,7 @@ Deliverable: recording and historical exploration are mutually exclusive for the
 #### Task 3.3 — Implement steady-rate playback
 
 - [x] Implement Play/Pause with one outstanding timer per player. Play starts from the selected sequence, waits one interval, applies the next step, and stops exactly at the endpoint. Repeated Play cannot create additional timer loops.
-- [x] Use a base rate of 4 steps/second at 1×, with supported multipliers 0.5×, 1×, 2×, and 4×. Put those constants in one shared place for the controller and UI. Validate rates as supported finite positive values.
+- [x] Use a base interval of 150 ms/step at 1×, with supported multipliers 0.5×, 1×, 2×, 3×, and 4×. Put those constants in one shared place for the controller and UI. Validate rates as supported finite positive values.
 - [x] Give every step the same interval at the chosen rate, including full-document resume transitions. Ignore original timestamps and inactivity; do not add a real-time mode, idle threshold, or overnight gaps.
 - [x] When the rate changes during playback, cancel the existing timer and schedule the next step using the new interval from the current selection. Changing rate must not itself advance the document or create multiple pending callbacks.
 - [x] Play at the endpoint or with zero steps is unavailable/no-op; it does not silently rewind. The user can select an earlier sequence before playing again. Pause retains the current sequence and text.
@@ -876,7 +876,7 @@ Deliverable: selecting `.replay` in Files opens the player, and the file works a
 
 #### Task 6.4 — Remove redundant actions and add configurable shortcuts
 
-- [x] Remove all record/replay/export buttons from the note header, keeping only the compact non-interactive recording/saving/error status. Remove export from the player and the obsolete export dialog flow.
+- [x] Remove all record/replay/export buttons from the note header, including the recording/saving/error status bar. Keep status in the ribbon icon and tooltip. Remove export from the player and the obsolete export dialog flow.
 - [x] Keep the ribbon Start/Stop toggle, note file-menu Start/Stop/retry, and command-palette commands. Keep stable IDs `start-recording` and `stop-recording` so user bindings survive upgrades.
 - [x] Propose two uncommon defaults: **Mod+Alt+Shift+R** for Start and **Mod+Alt+Shift+S** for Stop/retry (**⌘⌥⇧R/S** on macOS; **Ctrl+Alt+Shift+R/S** on Windows/Linux). These are candidates, not a claim that every OS/vault leaves them unused. Check stock Obsidian, the test vault, OS-reserved shortcuts, and existing user bindings before finalizing them; never overwrite a user binding to free a key.
 - [x] Register shortcuts through the normal command `hotkeys` field and let users change/remove them in **Settings → Hotkeys**, filtered to Replay. Do not create a second keybinding store/editor, global keyboard listeners, or edit `hotkeys.json` directly. Add clear setup instructions in the README.

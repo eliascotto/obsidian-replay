@@ -129,7 +129,7 @@ void test('work limits and unexpected comparison errors show plain text without 
 		void presentation.display;
 		assert.equal(calls, 1);
 		assert.equal(clock.size, 1);
-		clock.advance(250);
+		clock.advance(150);
 		assert.equal(player.state.sequence, 1);
 		assert.equal(player.state.error, null);
 		presentation.toggle();
