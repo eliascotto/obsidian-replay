@@ -13,8 +13,13 @@ export async function checkRelease(root, tag) {
 	require([pkg.version, lock.version, lock.packages?.['']?.version].every((version) => version === manifest.version), 'Package, lockfile, and manifest versions must agree.');
 	require(versions[manifest.version] === manifest.minAppVersion, 'Version map must match the manifest minimum.');
 	require(['description', 'author'].every((key) => typeof manifest[key] === 'string' && manifest[key].trim()), 'Manifest description and author are required.');
+	require(manifest.description.length <= 250, 'Manifest description must be at most 250 characters.');
+	require(typeof pkg.license === 'string' && pkg.license.trim() && pkg.license === lock.packages?.['']?.license, 'Package and lockfile must declare the same license.');
 	require(typeof manifest.isDesktopOnly === 'boolean', 'Manifest must declare platform support.');
 	if (tag !== undefined) require(tag === manifest.version && semver.test(tag), 'Release tag must exactly match the manifest version, without v.');
+	for (const document of ['README.md', 'LICENSE']) {
+		require((await readFile(path.join(root, document), 'utf8')).trim(), `Missing or empty submission document: ${document}`);
+	}
 	const assets = ['main.js', 'manifest.json', 'styles.css'];
 	for (const asset of assets) {
 		const info = await stat(path.join(root, asset));

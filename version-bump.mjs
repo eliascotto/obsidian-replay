@@ -9,7 +9,7 @@ if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u.test(targetVersion ?? '')) {
 const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
 const { minAppVersion } = manifest;
 manifest.version = targetVersion;
-writeFileSync('manifest.json', JSON.stringify(manifest, null, '\t'));
+writeFileSync('manifest.json', JSON.stringify(manifest, null, '\t') + '\n');
 
 // update versions.json with target version and minAppVersion from manifest.json
 // Keep an existing target entry aligned too; do not stage files or create Git tags.

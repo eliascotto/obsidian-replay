@@ -8,7 +8,7 @@ description: Track Replay implementation tasks, design decisions, and verificati
 
 ## Current state and delivery target
 
-Milestones 1–5 have implemented code and passing automated checks: the portable format/engine, explicit recording controls, editor capture, local persistence, read-only timeline/playback, Doomed highlighting, portable export, and release metadata/artifact gates. Desktop smoke tests and isolated export verification passed; the full desktop/mobile/minimum-version matrix remains open. The MVP is not yet fully verified or release-ready.
+Milestones 1–5 have implemented code and passing automated checks: the portable format/engine, explicit recording controls, editor capture, local persistence, read-only timeline/playback, Doomed highlighting, portable export, and release metadata/artifact gates. Later milestones implement the current file workflow and formatted playback. Version `1.0.0` is prepared with passing automated release checks. Desktop smoke tests and isolated export verification passed previously; the full desktop/mobile/minimum-version matrix remains open. Packaging is ready, but full device verification and publication are still pending. See the [release guide](RELEASING.md) for the remaining checks and publication steps.
 
 The current workflow is: open a Markdown note → Start recording → create its sibling `.replay` file → write → Stop and verify the updated file → select that file in Files to play/explore it → copy/share the file directly. Resume continues the same recording and updates the same managed file.
 
@@ -1073,6 +1073,16 @@ All 264 existing tests, the production build, and release checks pass. Local doc
 This supersedes Task 4.2's per-player default and Task 4.4's transient toggle. Doomed's on/off choice is now a validated `doomedEnabled` boolean in shared local plugin preferences, alongside playback speed and highlight color. Missing or invalid values default to off. Toggling updates open replay views immediately and saves through the existing serialized preference queue. File changes, endpoint refreshes, loading/unavailable states, and view disposal clear comparisons without overwriting the preference. View subscriptions are released on close. Playback state and portable recording files are unchanged.
 
 All 268 tests pass, including four new cases covering boolean validation/defaults, persistence of both choices, ordered saves and failure recovery, shared presentations, cache invalidation, and unchanged playback. Production build and release checks pass; lint retains only the existing settings-search compatibility warning. The test vault was rebuilt and reloaded on Obsidian 1.13.7/macOS. Enabling Doomed in **Demo** carried into **Reading highlights check**. Reloading restored it on; disabling and reloading restored it off. The original enabled choice was then restored and saved, with playback speed still 2× and color `#ffea00`. All 54 monitored note/history files remained unchanged. Mobile device verification remains outstanding.
+
+#### Version 1.0.0 release preparation — 2026-10-18
+
+Updated package, lockfile root, manifest, and version map to `1.0.0`, retaining plugin ID `replay` and minimum Obsidian `1.7.2`. Corrected the package license identifier to `0BSD`, matching the existing license text without changing its terms. Historical version references above describe earlier verification and remain unchanged.
+
+A clean dependency install succeeded. All 273 tests pass, including release gates for aligned metadata, exact tags, required submission documents, and description length. Lint completes with no errors and the existing settings-search warning; installed public types do not expose the newer declarative settings API. Production build and `npm run check:release -- --tag 1.0.0` pass. Workflow YAML and embedded shell syntax were checked locally; the updated workflow has not run on GitHub yet.
+
+The release workflow validates a version tag, builds and checks the plugin, attests public-repository assets, and creates a draft GitHub release with `main.js`, `manifest.json`, `styles.css`, and generated notes. Public-only attestation avoids an unsupported private-repository attestation blocking draft preparation. The repository was verified as private with default branch `main`; public access is still required for this repository's planned open-source directory submission. No repository visibility change, commit, tag, push, release, or directory submission was performed.
+
+No new device verification is claimed. Existing macOS/Obsidian 1.13.7 smoke-test evidence remains recorded above. Final packaged-install testing, mobile, and minimum-version checks remain open in the [release guide](RELEASING.md). The shortened README and its protected introductory section are unchanged by release preparation.
 
 ## Verification and definition of done
 
