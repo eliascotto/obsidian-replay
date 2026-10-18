@@ -31,8 +31,22 @@ export default defineConfig(
 	},
 	...obsidianmd.configs.recommended,
 	{
+		files: ['src/**/*.ts'],
+		rules: {
+			// The upstream rule misses calls through aliases and ownerDocument.
+			'no-restricted-syntax': ['error', {
+				selector: 'CallExpression[callee.type="MemberExpression"][callee.property.name=/^(createElement|createElementNS|createDocumentFragment|createTextNode)$/]',
+				message: 'Use Obsidian DOM helpers (createEl, createFragment, or appendText) instead of native DOM creation.',
+			}],
+		},
+	},
+	{
 		files: ['tests/**/*.ts'],
-		rules: { 'obsidianmd/no-nodejs-modules': 'off' },
+		// Node fixtures emulate Obsidian's globals; these exceptions never apply to src/.
+		rules: {
+			'obsidianmd/no-nodejs-modules': 'off',
+			'obsidianmd/no-global-this': 'off',
+		},
 		languageOptions: {
 			globals: globals.node,
 			parserOptions: {

@@ -31,15 +31,14 @@ export function renderReplayText(target: TextTarget, text: string, ranges: reado
 	const previous = rendered.get(target);
 	if (previous?.text === text && previous.signature === signature) return;
 	const element = target as HTMLElement;
-	const document = element.ownerDocument;
-	const fragment = document.createDocumentFragment();
+	const fragment = element.ownerDocument.adoptNode(createFragment());
 	let from = 0;
 	for (const range of ranges) {
-		if (from < range.from) fragment.appendChild(document.createTextNode(text.slice(from, range.from)));
+		if (from < range.from) fragment.appendText(text.slice(from, range.from));
 		fragment.createSpan({ cls: 'replay-doomed-text', text: text.slice(range.from, range.to) });
 		from = range.to;
 	}
-	if (from < text.length) fragment.appendChild(document.createTextNode(text.slice(from)));
+	if (from < text.length) fragment.appendText(text.slice(from));
 	// Commit a complete fragment, so text and highlight ranges always describe the same step.
 	element.replaceChildren(fragment);
 	rendered.set(target, { text, signature });

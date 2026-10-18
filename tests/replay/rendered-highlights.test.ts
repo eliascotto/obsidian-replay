@@ -19,7 +19,7 @@ function marks(root: TestNode): string[] {
 }
 
 void test('native marks preserve headings, emphasis, links, and exact historical text', () => {
-	const { root, add } = fixture();
+	const { document, root, add } = fixture();
 	const heading = add(root, 'h1', 'Draft title');
 	const paragraph = add(root, 'p', 'Keep ');
 	const bold = add(paragraph, 'strong', 'old');
@@ -32,6 +32,8 @@ void test('native marks preserve headings, emphasis, links, and exact historical
 	assert.equal(root.children[0], heading);
 	assert.equal(paragraph.children[1], bold);
 	assert.equal(paragraph.children[2], link);
+	assert.equal(document.adopted.length, 1);
+	assert.ok(document.created.every((node) => node.ownerDocument === document));
 });
 
 void test('a difference crossing formatted nodes creates marks inside each ancestor', () => {

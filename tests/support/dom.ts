@@ -1,3 +1,5 @@
+import { after, before } from 'node:test';
+
 /** Small injected DOM tree: text nodes, elements and fragment transfer, without HTML parsing. */
 export class TestNode {
 	children: TestNode[] = [];
@@ -7,11 +9,12 @@ export class TestNode {
 	parentNode: TestNode | undefined;
 	private attributes = new Map<string, string>();
 
-	constructor(readonly ownerDocument: TestDocument, readonly nodeName: string) {}
+	constructor(public ownerDocument: TestDocument, readonly nodeName: string) {}
 	get nodeType(): number { return this.nodeName === '#text' ? 3 : this.nodeName === '#document-fragment' ? 11 : 1; }
 	get tagName(): string { return this.nodeName; }
 	get childNodes(): TestNode[] { return this.children; }
 	setAttribute(name: string, value: string): void { this.attributes.set(name, value); }
+	appendText(text: string): void { this.appendChild(this.ownerDocument.createTextNode(text)); }
 	createEl(name: string, options: { cls?: string; text?: string } = {}): TestNode {
 		return this.appendElement(name, options);
 	}
@@ -60,7 +63,28 @@ export class TestNode {
 
 export class TestDocument {
 	created: TestNode[] = [];
+	adopted: TestNode[] = [];
+	adoptNode(node: TestNode): TestNode {
+		this.adopted.push(node);
+		const adopt = (child: TestNode): void => { child.ownerDocument = this; child.children.forEach(adopt); };
+		adopt(node);
+		return node;
+	}
 	createElement(name: string): TestNode { const node = new TestNode(this, name.toUpperCase()); this.created.push(node); return node; }
 	createTextNode(text: string): TestNode { const node = new TestNode(this, '#text'); node.textContent = text; this.created.push(node); return node; }
 	createDocumentFragment(): TestNode { return new TestNode(this, '#document-fragment'); }
 }
+
+// Obsidian provides this global at runtime. Create it in another document so the
+// rendering tests also exercise adoption into the target's document.
+const originalCreateFragment = Object.getOwnPropertyDescriptor(global, 'createFragment');
+before(() => {
+	Object.defineProperty(global, 'createFragment', {
+		configurable: true,
+		value: () => new TestDocument().createDocumentFragment(),
+	});
+});
+after(() => {
+	if (originalCreateFragment) Object.defineProperty(global, 'createFragment', originalCreateFragment);
+	else Reflect.deleteProperty(global, 'createFragment');
+});

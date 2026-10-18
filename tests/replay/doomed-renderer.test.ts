@@ -16,6 +16,8 @@ void test('highlight rendering builds only text and spans with exact source cont
 	]);
 	assert.ok(document.created.every((node) => ['CODE', 'SPAN', '#text'].includes(node.nodeName)));
 	assert.ok(target.children.every((node) => node.ownerDocument === document));
+	assert.equal(document.adopted.length, 1);
+	assert.equal(document.adopted[0]!.ownerDocument, document);
 	const writes = target.writes;
 	renderReplayText(target.element, text, ranges.map((range) => ({ ...range })));
 	assert.equal(target.writes, writes);

@@ -51,15 +51,15 @@ export function highlightRenderedDifference(root: HTMLElement, finalText: string
 			ranges.push({ from: Math.max(range.from, part.from) - part.from, to: Math.min(range.to, part.to) - part.from });
 		}
 		if (!ranges.length) continue;
-		const fragment = root.ownerDocument.createDocumentFragment();
+		const fragment = root.ownerDocument.adoptNode(createFragment());
 		const text = part.node.textContent ?? '';
 		let cursor = 0;
 		for (const range of ranges) {
-			fragment.appendChild(root.ownerDocument.createTextNode(text.slice(cursor, range.from)));
+			fragment.appendText(text.slice(cursor, range.from));
 			fragment.createEl('mark', { cls: 'replay-doomed-mark', text: text.slice(range.from, range.to) });
 			cursor = range.to;
 		}
-		fragment.appendChild(root.ownerDocument.createTextNode(text.slice(cursor)));
+		fragment.appendText(text.slice(cursor));
 		part.node.replaceWith(fragment);
 	}
 	return true;

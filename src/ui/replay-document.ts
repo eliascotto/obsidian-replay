@@ -86,7 +86,7 @@ export class ReplayDocument extends Component {
 	private source(text: string, message: string, display?: DoomedDisplay): void {
 		const scroll = this.host.scrollTop;
 		this.host.removeClass('markdown-preview-view', 'markdown-rendered', 'is-readable-line-width');
-		const pre = this.host.ownerDocument.createDocumentFragment().createEl('pre', { cls: 'replay-source' });
+		const pre = this.host.ownerDocument.adoptNode(createFragment()).createEl('pre', { cls: 'replay-source' });
 		const code = pre.createEl('code');
 		try { renderReplayText(code, text, display?.ranges); }
 		catch {
@@ -154,7 +154,7 @@ export class ReplayDocument extends Component {
 
 	private createStage(): HTMLDivElement {
 		// Keep pending renders detached and in the host's document, including pop-out windows.
-		return this.host.ownerDocument.createDocumentFragment().createDiv({ cls: 'markdown-preview-sizer markdown-preview-section' });
+		return this.host.ownerDocument.adoptNode(createFragment()).createDiv({ cls: 'markdown-preview-sizer markdown-preview-section' });
 	}
 
 	private clearFinalPreview(): void {
