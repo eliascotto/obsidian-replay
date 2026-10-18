@@ -14,17 +14,21 @@ Verified locally on 2026-10-18 with Node.js 22.14.0:
 - Lint has no errors and one existing warning: settings are not indexed by Obsidian 1.13+ settings search. They remain available in **Settings → Replay**.
 - The production build and exact `1.0.0` release checks pass.
 - Workflow YAML and embedded shell syntax pass local validation. The updated GitHub workflow still needs its first remote run.
-- Earlier macOS/Obsidian 1.13.7 smoke tests are recorded in [PLAN.md](PLAN.md).
+- Final desktop release checks passed on macOS with Obsidian 1.13.7 and, after a full restart applied an already-pending update, 1.14.4. Details are recorded in [PLAN.md](PLAN.md).
 
-Before publishing, complete these outstanding device checks with the release assets in a separate test vault:
+Device checklist using copied `1.0.0` release assets in separate test vaults:
 
-- [ ] Record an existing note; type, paste, undo, redo, and stop. Verify the exact initial and final text.
-- [ ] Make unrecorded edits, resume, stop, and restart Obsidian. Confirm earlier history survives and recording restarts stopped.
-- [ ] Record two notes independently; rename/move one and confirm its companion follows without overwriting other files.
-- [ ] Play, pause, seek, step, change speed, and toggle Doomed in light and dark themes. Confirm playback leaves the note unchanged.
-- [ ] Open a copied `.replay` file in another vault without its source note or local recording history.
+- [x] Record an existing note; type, paste, undo, redo, and stop. Verify the exact initial and final text.
+- [x] Make unrecorded edits, resume, stop, and restart Obsidian. Confirm earlier history survives and recording restarts stopped.
+- [x] Record two notes independently; rename one and confirm its companion follows without changing the other note or recording.
+- [x] Play, pause, seek, step, change speed, and toggle Doomed in light and dark themes. Confirm playback leaves the note unchanged.
+- [x] Open a copied `.replay` file in another vault without its source note or local recording history.
 - [ ] Run the recording, restart, playback, and sharing journey on at least one mobile device.
 - [ ] Run the core recording and playback journey on Obsidian 1.7.2 to verify the declared minimum.
+
+The last two checks are blocked, not passed. Xcode reports no available device or simulator runtime, Android tools are absent, and the user confirmed no mobile device is available. No local Obsidian 1.7.2 build is installed or available from the user. The [official changelog](https://obsidian.md/changelog/2024-09-19-desktop-v1.7.2/) identifies 1.7.2 as a Catalyst early-access build; the official public GitHub release lookup returns 404. A newer desktop version does not verify that minimum.
+
+Desktop verification used fresh `Release check` and `Shared check` vaults under `/private/tmp/Replay-1.0.0-device-check-t41n19a0/`. The second vault contains only copied recordings and the plugin, with no Markdown source notes or per-recording history. All 13 monitored source note/portable/history files remained byte-identical through restart and subsequent viewing. Release assets in both vaults match the project files. `results.json` in that temporary folder records the checks; temporary vaults may be removed by the operating system.
 
 Record the device/version and results in [PLAN.md](PLAN.md). Automated checks do not establish device compatibility. Resolve failures before publication; do not mark unperformed checks as passed.
 
