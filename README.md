@@ -8,6 +8,8 @@ Also supports a **Doomed** mode to highlight text that differs from the final re
 
 Inspired by an old YCombinator project called Stypi. See [Paul Graham writing process](https://byronm.com/13sentences.html) for inspiration.
 
+!["Replay in action"](replay.gif)
+
 ## Explore the features
 
 - Start and stop recording for each note, and continue the same recording across sessions.
