@@ -1,4 +1,4 @@
-# Obsidian-Replay
+# Replay
 
 > Replay your writing process
 
