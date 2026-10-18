@@ -48,7 +48,7 @@ export class ReplayCoordinator {
 		this.current = { phase: 'loading', path };
 		this.changed();
 		try {
-			if (!this.exists(path)) throw new Error('Missing note');
+			if (!this.exists(path)) throw new Error('The source note is missing.');
 			const snapshot = await this.recordings.stoppedSnapshot(path);
 			if (this.disposed || generation !== this.generation) return;
 			if (!snapshot || !this.exists(path)) {

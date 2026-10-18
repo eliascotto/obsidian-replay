@@ -1,11 +1,19 @@
 import type { Plugin } from 'obsidian';
 import type { RecordingControls } from '../ui/recording-controls';
 
-/** The two requested defaults remain editable in Obsidian Settings → Hotkeys. */
+/** One toggle shortcut; keep legacy commands so existing user bindings still work. */
 export function registerRecordingCommands(plugin: Plugin, controls: RecordingControls): void {
 	plugin.addCommand({
+		id: 'toggle-recording', name: 'Toggle recording',
+		hotkeys: [{ modifiers: ['Mod', 'Shift'], key: 'R' }],
+		checkCallback: (checking) => {
+			if (!controls.canStop() && !controls.canStart()) return false;
+			if (!checking) controls.toggle();
+			return true;
+		},
+	});
+	plugin.addCommand({
 		id: 'start-recording', name: 'Start recording',
-		hotkeys: [{ modifiers: ['Mod', 'Alt', 'Shift'], key: 'R' }],
 		checkCallback: (checking) => {
 			if (!controls.canStart()) return false;
 			if (!checking) controls.start();
@@ -13,8 +21,7 @@ export function registerRecordingCommands(plugin: Plugin, controls: RecordingCon
 		},
 	});
 	plugin.addCommand({
-		id: 'stop-recording', name: 'Stop recording / retry save',
-		hotkeys: [{ modifiers: ['Mod', 'Alt', 'Shift'], key: 'S' }],
+		id: 'stop-recording', name: 'Stop recording or retry saving',
 		checkCallback: (checking) => {
 			if (!controls.canStop()) return false;
 			if (!checking) controls.stop();

@@ -1,8 +1,12 @@
+---
+description: Define the recording, playback, sharing, and highlighting behavior of Replay.
+---
+
 # Replay: project definition
 
 Status: product specification. The `.replay` file workflow below was agreed and implemented on 2026-10-17; verification coverage is tracked in PLAN.md.
 
-This document defines what Replay is intended to do. It is the product source of truth. [PLAN.md](docs/PLAN.md) defines how the MVP will be built and must follow this definition where the two disagree. This document does not describe functionality already implemented.
+This document defines Replay's intended behavior. The [implementation plan](docs/PLAN.md) tracks how it is built and verified, and must follow this definition where the two disagree.
 
 ## Purpose
 
@@ -18,7 +22,7 @@ The motivation comes from Paul Graham's [Watch Me Make Mistakes](https://paulgra
 2. Select **Start recording** from the ribbon, note file menu, command palette, or configured shortcut. Replay automatically creates `<note-name>.replay` beside the note.
 3. Write and revise normally. Replay records the changes while recording is active.
 4. Select **Stop recording**. Replay saves the captured changes and updates the companion `.replay` file with the complete recording.
-5. Select the `.replay` file in Obsidian’s Files pane to open its read-only player. Select **Play**, change the playback speed, step through changes, or drag the timeline.
+5. Select the `.replay` file in **Files** to open its read-only player. Select **Play**, change the playback speed, step through changes, or drag the timeline.
 6. Toggle **Doomed** to compare the selected step with the final recorded step and highlight the differing text in the selected step.
 7. Copy or share the `.replay` file directly. Someone with Replay enabled can open it in another vault without the original Markdown note or hidden recording data; no separate export action is needed.
 
@@ -40,7 +44,7 @@ The writer can also start recording again after stopping. This continues the sam
 
 The distinction between the live note and its recording must remain clear. The live note may continue changing while a recording is stopped.
 
-## Resuming after unrecorded changes
+## Resume after unrecorded changes
 
 Unrecorded work is the user's responsibility. Replay does not need to recover missing edits, infer how they happened, or prevent the user from continuing the recording.
 
@@ -69,13 +73,13 @@ Handling sync, Git, or other external edits as a comprehensive version-history s
 
 Register `.replay` as a custom file extension. Selecting a valid `.replay` file opens a native file-backed tab with these replay controls:
 
-- **Play / Pause**.
-- **Playback rate**.
+- **Play** and **Pause**.
+- **Playback speed**.
 - **Previous step** and **Next step**.
-- A draggable **timeline** showing the selected position.
+- A draggable timeline showing the selected position.
 - A **Doomed** toggle.
 
-Keep **Start recording / Stop recording** in the ribbon, note file menu, command palette, and two configurable keyboard shortcuts. Remove the recording action, open-replay action, and export action from the note header; remove export from the player. Show recording/saving/error status through the ribbon icon and tooltip; do not add a status bar above the note. Configure shortcuts through **Settings → Hotkeys**. The `.replay` view and tab use the existing Lucide `history` icon, previously used for **Open replay**.
+Keep **Start recording** and **Stop recording or retry saving** in the ribbon, note file menu, and command palette, with one configurable **Toggle recording** keyboard shortcut for both actions. Default to `Command+Shift+R` on macOS or `Ctrl+Shift+R` on Windows and Linux (two modifier keys). Remove the recording action, open-replay action, and export action from the note header; remove export from the player. Show recording and save status through the ribbon icon and tooltip; do not add a status bar above the note. Configure the keyboard shortcut through **Settings → Hotkeys**; include directions in Replay's settings. Retain stable Start/Stop command IDs for existing custom bindings, without separate default keys. The `.replay` view and tab use the existing Lucide `history` icon, previously used for **Open replay**.
 
 Recording and replay remain mutually exclusive for the same locally managed recording. While its source note is starting, recording, saving, or in an unresolved save error, pause and disable its `.replay` player. A successful Stop refreshes that file and enables replay without starting playback. A copied or shared recording has no dependency on a source note and plays independently. Never infer a recording association from a matching filename alone.
 
@@ -83,7 +87,7 @@ The replay displays the same note as it existed at the selected recorded point, 
 
 By default, render ordinary Markdown through Obsidian's public Markdown renderer with Reading view typography. Keep the `.replay` file tab and playback toolbar; do not create a temporary Markdown file or attach historical text to the live note's editor. Users can scroll, select, copy, and explicitly follow links, but cannot type, paste, drop content, or change task checkboxes in the replay surface.
 
-Enabling **Doomed** temporarily shows exact Markdown source with its highlights and the explanation **Showing source for Doomed highlights.** Disabling it returns to rendered Markdown at the same selected state and playback rate, without changing playback status. This preserves differences in syntax and other source characters that formatted Markdown can hide.
+Enabling **Doomed** keeps the formatted Reading view and highlights differences between the visible text of the selected and final recorded states using native Obsidian highlight marks. Preserve headings, emphasis, links, and authored highlights. Hidden Markdown syntax and link destinations are not visible comparison text. Do not show a source-mode explanation bar just for enabling Doomed. Toggling it preserves the selected state, playback rate, and playback status. Existing source fallback compares the exact source.
 
 Use exact-source fallback for recorded HTML, embeds/images, named code fences, and inline query syntax before calling the renderer; these may load resources or invoke active Markdown processors. Unnamed fenced code remains renderable. Renderer failure also falls back to the selected source without stopping playback. Explain each fallback briefly. Normal Markdown rendering uses the installed Obsidian rendering pipeline; compatibility with arbitrary third-party post-processors is not guaranteed. Replay adds no network calls or code execution. Link context is the recording's actual vault path, with no requirement for the source note or inferred recording ownership.
 
@@ -105,7 +109,9 @@ The selected playback rate is shared across open replay tabs and saved in the pl
 
 **Doomed** compares the text at the selected recorded step with the text at the last recorded step. It highlights the words or letters in the selected step that differ from the final document. Text maintained intact in the comparison is not highlighted. The user can toggle this treatment while playing or exploring the stopped recording.
 
-The reference interaction highlights doomed text in yellow. Replay should make the highlight clear and readable within Obsidian themes; the exact visual styling is an implementation detail.
+The default Doomed highlight color is `#ffea00`. Provide a color picker and six-digit hex input in **Settings → Replay → Doomed highlight color**, plus a reset action. Save the choice locally and apply it immediately to all replay tabs, including source fallback, without changing playback or authored highlights. Use black or white highlight text to maintain contrast.
+
+Save the Doomed on/off choice locally and share it across replay tabs, files, and future Obsidian sessions, like playback speed. Default to off only when no valid choice has been saved. Loading another file, resuming recording, or refreshing its saved endpoint clears comparisons without resetting this preference. Do not store it in recording files or change playback when it is toggled.
 
 - Highlight only text present in the displayed historical state.
 - Compute a text diff between the selected recorded state and the final recorded state. The current live note is not the comparison target.
@@ -121,7 +127,7 @@ Doomed depends only on those two document states. It does not track character id
 
 ## A recording is a self-contained, shareable artifact
 
-Replay automatically maintains one **`<note-name>.replay`** file beside each recorded Markdown note, for example `Essays/Article.md` → `Essays/Article.replay`. It is a normal visible vault file, self-contained and ready to copy/share.
+Replay automatically maintains one `<note-name>.replay` file beside each recorded note, for example `Essays/Article.md` → `Essays/Article.replay`. It is a visible vault file that contains everything needed for playback and sharing.
 
 The file contains readable, uncompressed JSON using the existing version 1 recording schema: format identifier/version, complete initial text, ordered edit/resume steps, and enough data to reconstruct every state and compute Doomed. The new extension does not itself require a format version change. It must not require vault paths, local recording IDs, external resources, executable code, or hidden plugin storage for playback.
 
@@ -147,7 +153,7 @@ Required product capabilities:
 - A steady adjustable edit rate and a timeline based on recorded steps, with no original pauses.
 - Doomed highlighting based on a text diff between the selected recorded step and the final recorded step.
 - Automatic creation and verified updates of a visible sibling `.replay` file; native file-based playback and direct sharing of that self-contained, readable, uncompressed file.
-- Start/Stop through ribbon, file menu, command palette, and two configurable shortcuts, without redundant header action buttons.
+- Start/Stop through ribbon, file menu, command palette, and one configurable toggle shortcut, without redundant header action buttons.
 - Local operation without requiring a cloud account or sending vault content to an external service.
 
 Not required by this product definition:
@@ -168,18 +174,18 @@ Retention controls, history deletion, storage limits, snapshot frequency, compre
 
 ## Acceptance scenarios
 
-1. **Record an existing article:** start with nonempty Markdown, start recording, revise it, and stop. Replay begins with the exact starting article and ends with the exact text at stop.
-2. **Explore the process:** play, pause, change rate, step backwards and forwards, and drag the timeline. Every position shows the corresponding recorded text without changing the live note. At a selected rate, successive steps have equal playback intervals regardless of original typing delays.
-3. **Continue tomorrow:** stop, leave the document overnight, and start again. The same recording continues without an overnight playback pause.
-4. **Continue after unrecorded work:** stop, change the note, and start again. The next recorded state is the changed document; earlier recorded states remain available.
-5. **Separate note from recording:** after stopping, edit the live note. The stopped replay and its doomed analysis remain anchored to the recorded final state.
-6. **Inspect doomed text:** at an earlier state, enable Doomed and see the selected-state differences from the final recorded text highlighted, while unchanged text remains unhighlighted. Disable it to see the same historical text without the highlight. Identical selected and final states have no highlighting, including after deletion and retyping.
-7. **Extend the ending:** resume, make further revisions, and stop. Replay includes both recording periods, and doomed analysis uses the new ending.
-8. **Restart Obsidian:** previously saved recording states remain reconstructable and playable.
-9. **Share a recording:** Start creates the sibling `.replay` file and Stop updates it. Open it from Files, then copy it alone into another vault with Replay enabled. Play, seek, and compute Doomed without the original note or hidden history. No export dialog or open-replay button is involved.
-10. **Keep recording and replay separate:** while recording, that recording’s `.replay` player is paused/disabled. Stop saves and updates it before enabling playback. Starting again captures only the live Markdown document and retains the existing history.
-11. **Use the simplified controls:** no record/replay/export buttons remain in the note header, and no export button remains in the player. The ribbon, note menu, palette, and configurable Start/Stop hotkeys work with the correct active note. Replay files open with the existing `history` tab icon.
-12. **Preserve files:** source renames/moves keep the managed companion beside the note without overwriting unrelated files. Publication failures, externally edited artifacts, source deletion, and restart preserve recoverable history and portable recordings.
+1. **Record an existing article** — start with nonempty Markdown, start recording, revise it, and stop. Replay begins with the exact starting article and ends with the exact text at stop.
+2. **Explore the process** — play, pause, change rate, step backwards and forwards, and drag the timeline. Every position shows the corresponding recorded text without changing the live note. At a selected rate, successive steps have equal playback intervals regardless of original typing delays.
+3. **Continue tomorrow** — stop, leave the document overnight, and start again. The same recording continues without an overnight playback pause.
+4. **Continue after unrecorded work** — stop, change the note, and start again. The next recorded state is the changed document; earlier recorded states remain available.
+5. **Separate note from recording** — after stopping, edit the live note. The stopped replay and its doomed analysis remain anchored to the recorded final state.
+6. **Inspect doomed text** — at an earlier state, enable Doomed and see the selected-state differences from the final recorded text highlighted, while unchanged text remains unhighlighted. Disable it to see the same historical text without the highlight. Identical selected and final states have no highlighting, including after deletion and retyping.
+7. **Extend the ending** — resume, make further revisions, and stop. Replay includes both recording periods, and doomed analysis uses the new ending.
+8. **Restart Obsidian** — previously saved recording states remain reconstructable and playable.
+9. **Share a recording** — start recording to create the `.replay` file, then stop to update it. Open it from **Files**, then copy it into another vault with Replay enabled. Play, seek, and compute Doomed without the original note or hidden history. No export dialog or open-replay button is involved.
+10. **Keep recording and replay separate** — while recording, that recording’s `.replay` player is paused/disabled. Stop saves and updates it before enabling playback. Starting again captures only the live Markdown document and retains the existing history.
+11. **Use the simplified controls** — no record/replay/export buttons remain in the note header, and no export button remains in the player. The ribbon, note menu, palette, and configurable Start/Stop keyboard shortcut work with the correct active note. Replay files open with the existing `history` tab icon.
+12. **Preserve files** — source renames/moves keep the managed companion beside the note without overwriting unrelated files. Publication failures, externally edited artifacts, source deletion, and restart preserve recoverable history and portable recordings.
 
 ## Relationship to the implementation plan
 
@@ -189,7 +195,7 @@ The single implementation plan, [PLAN.md](docs/PLAN.md), must:
 
 - Make explicit start/stop recording and continuation of one recording per file the core capture workflow. Make recording and replay mutually exclusive.
 - Automatically maintain a documented, readable, uncompressed `.replay` file beside the note and use that file as the player entry point. Keep hosted sharing/upload and a standalone web player outside scope.
-- Preserve the minimal player toolbar, remove redundant header actions, and provide two configurable Start/Stop shortcuts with the existing stable command IDs.
+- Preserve the minimal player toolbar, remove redundant header actions, and provide one configurable Start/Stop toggle shortcut while retaining the existing stable command IDs for custom bindings.
 - Add Doomed as a named product feature using a text diff between the selected step and the last recorded step, without tracking text provenance.
 - Replace the assumption that every mismatch must stop recording with the required resume transition for unrecorded work.
 - Define playback and timeline progression by recorded steps at a steady adjustable rate, with no original delays or pauses.

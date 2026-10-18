@@ -18,7 +18,7 @@ export class RecordingControls {
 
 	constructor(private plugin: Plugin, private controller: RecordingController, private bridge: EditorCaptureBridge,
 		private replay: ReplayWorkspace) {
-		this.ribbon = plugin.addRibbonIcon('circle', 'Start recording', () => this.toggle());
+		this.ribbon = plugin.addRibbonIcon('circle-dot', 'Start recording', () => this.toggle());
 		plugin.register(controller.subscribe(() => this.refresh()));
 		plugin.register(bridge.subscribe(() => this.refresh()));
 		plugin.registerEvent(plugin.app.workspace.on('active-leaf-change', () => this.switched()));
@@ -26,9 +26,9 @@ export class RecordingControls {
 		plugin.registerEvent(plugin.app.workspace.on('layout-change', () => this.refresh()));
 		plugin.registerEvent(plugin.app.workspace.on('file-menu', (menu, file) => {
 			if (!(file instanceof TFile) || file !== this.current()?.file) return;
-			if (this.canStart()) menu.addItem((item) => item.setTitle('Start recording').setIcon('circle')
+			if (this.canStart()) menu.addItem((item) => item.setTitle('Start recording').setIcon('circle-dot')
 				.onClick(() => this.start()));
-			if (this.canStop()) menu.addItem((item) => item.setTitle('Stop recording / retry save').setIcon('square')
+			if (this.canStop()) menu.addItem((item) => item.setTitle('Stop recording or retry saving').setIcon('square')
 				.onClick(() => this.stop()));
 		}));
 		this.switched();
@@ -62,7 +62,7 @@ export class RecordingControls {
 		if (path && this.canStop()) void this.controller.stop(path).catch(() => undefined);
 	}
 
-	private toggle(): void { if (this.canStop()) this.stop(); else this.start(); }
+	toggle(): void { if (this.canStop()) this.stop(); else this.start(); }
 
 	private switched(): void {
 		const file = this.current()?.file ?? null;
@@ -78,17 +78,17 @@ export class RecordingControls {
 		if (this.disposed) return;
 		const view = this.current();
 		if (!view?.file) {
-			this.ribbon.setAttribute('aria-label', this.canStop() ? 'Stop recording / retry save' : 'Open a Markdown note to record');
+			this.ribbon.setAttribute('aria-label', this.canStop() ? 'Stop recording or retry saving' : 'Open a note in editing view to record');
 			this.ribbon.setAttribute('aria-disabled', String(!this.canStop()));
-			setIcon(this.ribbon, this.canStop() ? 'square' : 'circle');
+			setIcon(this.ribbon, this.canStop() ? 'square' : 'circle-dot');
 			return;
 		}
 		const phase = this.controller.status(view.file.path);
 		const stop = this.canStop();
-		const action = phase === 'error' ? 'Retry save' : stop ? 'Stop recording' : 'Start recording';
+		const action = phase === 'error' ? 'Retry saving' : stop ? 'Stop recording' : 'Start recording';
 		this.ribbon.setAttribute('aria-label', `${labels[phase]}: ${action}`);
 		this.ribbon.setAttribute('aria-disabled', String(!this.canStart() && !stop));
-		setIcon(this.ribbon, phase === 'error' ? 'alert-circle' : stop ? 'square' : 'circle');
+		setIcon(this.ribbon, phase === 'error' ? 'alert-circle' : stop ? 'square' : 'circle-dot');
 	}
 
 	dispose(): void { this.disposed = true; }
@@ -97,5 +97,5 @@ export class RecordingControls {
 export function reportRecordingError(path: string, error: unknown): void {
 	const detail = error instanceof RecordingError || error instanceof StorageError
 		? error.message : 'The recording could not be saved or loaded.';
-	new Notice(`Recording paused for ${path}. ${detail} Select Stop recording to retry saving.`, 8000);
+	new Notice(`Recording paused for ${path}. ${detail} Use the recording keyboard shortcut or ribbon button to retry saving.`, 8000);
 }

@@ -131,6 +131,8 @@ button.replay-icon-button:disabled {
 }
 
 .replay-toolbar .replay-rate {
+	-webkit-appearance: none;
+	appearance: none;
 	flex: 0 0 auto;
 	width: auto;
 	min-width: 0;
@@ -138,6 +140,11 @@ button.replay-icon-button:disabled {
 	line-height: 1.4;
 	background-image: none;
 	text-align: center;
+	text-align-last: center;
+}
+
+.replay-toolbar .replay-doomed-button {
+	padding-inline: var(--size-4-2);
 }
 
 .replay-message {
@@ -186,9 +193,10 @@ button.replay-icon-button:disabled {
 	outline-offset: 2px;
 }
 
-.replay-doomed-text {
-	background-color: rgba(var(--color-yellow-rgb, 236, 178, 44), 0.3);
-	color: inherit;
+.replay-document mark.replay-doomed-mark,
+.replay-document .replay-doomed-text {
+	background-color: var(--replay-doomed-color, #ffea00);
+	color: var(--replay-doomed-text-color, #000000);
 	border-radius: 2px;
 	box-decoration-break: clone;
 }

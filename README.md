@@ -1,21 +1,29 @@
+---
+description: Record, replay, and share how your Obsidian notes change as you write.
+---
+
 # Obsidian Replay
 
-Replay records the writing process in an Obsidian Markdown note so it can be watched and exported for sharing, inspired by Stypi. The agreed product behavior is in [PROJECT.md](PROJECT.md); implementation progress is in [PLAN.md](docs/PLAN.md).
+Replay records changes to an Obsidian note so you can watch and share the writing process. It is inspired by Stypi. The [project definition](PROJECT.md) describes the product, and the [implementation plan](docs/PLAN.md) tracks progress and verification.
 
-## Current implementation
+## Explore the features
 
-- Explicit per-note recording with Start, Stop, and continuation across sessions.
-- A visible `<note-name>.replay` file automatically created beside each recorded note.
-- Native file tabs: select a `.replay` file in **Files** to play, step, seek, change speed, or enable **Doomed** highlighting.
-- Read-only Markdown preview using Obsidian's renderer, with native headings, lists, tables, and callouts.
-- Self-contained readable JSON: copy the `.replay` file alone into another vault with Replay enabled to watch it.
-- Local/offline operation; no uploads, telemetry, accounts, or external services.
+- Start and stop recording for each note, and continue the same recording across sessions.
+- Open the `.replay` file beside a recorded note to play, pause, step through changes, and adjust playback speed.
+- Read formatted Markdown with native headings, lists, tables, and callouts.
+- Enable **Doomed** to highlight text that differs from the final recorded version.
+- Share a recording by copying its `.replay` file to another vault with Replay enabled.
+- Work locally without accounts, uploads, telemetry, or external services.
 
-The hidden append log keeps capture efficient and durable. The visible `.replay` file is the portable playback snapshot. Stop recording before copying/sharing it to include the latest session. Full device/minimum-version verification remains open; see [PLAN.md](docs/PLAN.md).
+The visible `.replay` file contains the recording used for playback. A separate local log stores changes during recording. Stop recording before sharing the file to include the latest changes.
 
-## Develop and install
+## Build and install Replay
 
-Use Node 18 or newer and npm:
+Replay requires Obsidian 1.7.2 or newer. Use a separate test vault during development. Desktop verification is recorded in the [implementation plan](docs/PLAN.md); mobile and minimum-version device checks remain incomplete.
+
+### Desktop
+
+Use Node.js 18 or newer and npm to build the plugin:
 
 ```sh
 npm install
@@ -25,67 +33,108 @@ npm run build
 npm run check:release
 ```
 
-Requires Obsidian 1.7.2 or newer. For an Obsidian smoke test, use a disposable test vault. Copy `main.js`, `manifest.json`, and `styles.css` into `<Vault>/.obsidian/plugins/replay/`, reload Obsidian, and enable Replay in **Settings → Community plugins**. `npm run dev` rebuilds on source changes.
+1. Copy `main.js`, `manifest.json`, and `styles.css` into `<Vault>/.obsidian/plugins/replay/`.
+2. Reload the Obsidian application.
+3. Open **Settings → Community plugins** and enable **Replay**.
 
-For ongoing local development, symlink those three files individually to the matching files in this project. Keep the plugin directory itself in the vault so `recordings/` stays local to that vault. After `npm run build` (or a rebuild from `npm run dev`), reload the plugin or Obsidian to load the new code; no copying is needed.
+If your vault uses a different configuration folder, replace `.obsidian` in that path.
+
+For ongoing development, you can create symbolic links for the three plugin files. Keep the `replay` folder in the vault so its `recordings/` folder stays local to that vault. Use `npm run dev` to rebuild when source files change, then reload the plugin or application to load the updated code.
+
+### Mobile
+
+Build the plugin on a desktop computer, then use your device's file tools to copy the same three files into the vault's plugin folder. Reopen the Obsidian app and enable **Replay** in **Settings → Community plugins**. The mobile app does not need Node.js or npm.
 
 ## Record a note
 
-1. Open a Markdown note in editing mode.
-2. Select the recording icon in the left ribbon, use the note's file menu, or run **Replay: Start recording** from the command palette (**⌘P** on macOS, **Ctrl+P** on Windows/Linux).
-3. Replay captures the complete initial document and creates a sibling `.replay` file. Write and revise normally; the ribbon icon and its tooltip show recording status.
-4. Run **Replay: Stop recording / retry save** or select the ribbon/menu action. Stop saves the log and verifies the updated `.replay` file before the ribbon tooltip reports **Recording stopped**.
-5. Start again to continue the same history. Changes made while stopped become one resume transition; their missing intermediate edits cannot be recovered.
+Replay records the complete initial note, then captures changes while recording is active. When you stop, it saves those changes and updates the `.replay` file beside the note. Starting again continues the same history. Changes made while stopped become one step when recording resumes; their intermediate edits cannot be recovered.
 
-**The `.replay` file includes deleted and superseded writing.** It initially contains the starting text and is refreshed after each completed Stop. During recording it retains the last published snapshot, and its locally managed player is disabled. Copy/share it only after Stop finishes.
+**Recordings include deleted and replaced text.** Stop recording before copying or sharing a `.replay` file to include the latest session. While recording is active, the file retains its previous saved state and its player is disabled.
 
-Default recording shortcuts are **Mod+Alt+Shift+R** for Start and **Mod+Alt+Shift+S** for Stop/retry: **⌘⌥⇧R/S** on macOS or **Ctrl+Alt+Shift+R/S** on Windows/Linux. Change or remove either in **Settings → Hotkeys**, filtered to `Replay`. Existing customized bindings take precedence; check for OS/plugin conflicts in your setup.
+### Desktop
 
-A save/publication error pauses capture and preserves the durable history for retry. Resolve the reported error and select Stop/retry; do not start a new recording to recover the pending save. Switching notes flushes capture without implicitly stopping it. Recording never starts automatically after reload.
+1. Open a note in editing view.
+2. Press `Command+Shift+R` (macOS) or `Ctrl+Shift+R` (Windows and Linux) to start recording. You can also select the recording button in the ribbon or perform **Replay: Toggle recording** from the command palette.
+3. Write and revise the note. The ribbon button's tooltip shows the recording status.
+4. Press the same keyboard shortcut or select the ribbon button again to stop. Wait for **Recording stopped** before sharing the recording.
+
+To open the command palette, press `Command+P` (macOS) or `Ctrl+P` (Windows and Linux). The note's file menu also provides **Start recording** and **Stop recording or retry saving**.
+
+### Mobile
+
+1. Open a note in editing view.
+2. Open the ribbon menu and select **Command palette**. If the keyboard hides the navigation bar, select **Toggle keyboard** in the editing toolbar, then **Open menu**.
+3. Search for and select **Replay: Toggle recording** to start.
+4. Edit the note, then perform **Replay: Toggle recording** again to stop before sharing the recording.
+
+For navigation details, see Obsidian's [mobile app guide](https://obsidian.md/help/mobile). These instructions describe the available controls; Replay's mobile recording workflow has not yet been verified on a device.
+
+## Change the recording keyboard shortcut
+
+The same keyboard shortcut starts recording, stops it, or retries saving after an error. Its default uses two modifier keys: `Command+Shift+R` (macOS) or `Ctrl+Shift+R` (Windows and Linux).
+
+1. Open **Settings → Hotkeys**.
+2. Search for **Replay: Toggle recording**.
+3. Select the plus button to add a keyboard shortcut. To remove one, select its cross button. Obsidian reports conflicts with other assigned commands.
+
+Existing **Start recording** and **Stop recording or retry saving** commands keep any keyboard shortcuts you assigned to them. They have no separate default shortcuts. Other plugins or your operating system may use the same keys.
+
+## Retry a failed save
+
+A save error pauses recording and preserves saved history. Resolve the reported problem, then use the recording keyboard shortcut or ribbon button to retry saving. Do not start a new recording to recover the pending save.
+
+Opening another note saves pending changes without stopping recording. Recording never starts automatically after you reopen Obsidian.
 
 ## Watch and share a recording
 
-Select the `.replay` file in **Files** to open its read-only player with the history icon. For example, `Essays/Article.md` creates `Essays/Article.replay`. Each file opens as a normal Obsidian file tab; multiple recordings can be open independently.
+1. Select the `.replay` file in **Files**. For example, `Essays/Article.md` has a recording named `Essays/Article.replay`.
+2. Select **Play**, **Pause**, **Previous step**, or **Next step**, or drag the timeline. At the end, **Restart** returns to the beginning, paused.
+3. Select a playback speed: 0.5×, 1×, 2×, 3×, or 4×. The speed is shared across replay tabs and saved for future sessions.
+4. Enable **Doomed** to highlight differences from the final recorded version.
+5. Copy or share the `.replay` file using your file tools. The recipient needs Replay enabled in Obsidian, but does not need the source note or local recording log.
 
-- Select **Play/Pause**, **Previous step**, or **Next step**, or drag the thin timeline. At the end, **Restart** rewinds to the start, paused. In the replay view, **Space** plays, pauses, or restarts; **Left/Right** move one step. Manual navigation pauses playback. The speed selector keeps its normal keyboard controls.
-- Choose 0.5×, 1×, 2×, 3×, or 4×. The chosen speed is shared across replay tabs and saved locally for other files and future Obsidian sessions. At 1× playback advances one recorded edit every 150 ms (about 6.67 edits per second), matching the [13 Sentences demo](https://byronm.com/13sentences.html). Original pauses take no playback time.
-- Ordinary Markdown uses Obsidian's Reading view styling. Scroll, select, and copy text; task checkboxes and content editing are disabled. Internal links open separately, using the `.replay` file's folder as context.
-- Toggle **Doomed** to show exact Markdown source with highlights for text that differs from the file's final recorded text. Turn it off to return to the formatted preview without moving the timeline or changing playback.
-- Switch back to the Markdown tab to write. Playback never modifies the live note.
-- Copy/share the ordinary `.replay` file using your normal file tools. A recipient with Replay enabled can open it without your source note, hidden recording folder, or vault.
+These playback controls work the same way on desktop and mobile. With a keyboard, press `Space` to play, pause, or restart. Press `Left Arrow` or `Right Arrow` to move one step. Moving through the recording manually pauses playback.
 
-There is no separate export dialog or export/open-replay button. Existing command IDs remain compatible: **Replay: Open recording file** opens the sibling; **Replay: Refresh recording file** repairs/refreshes it from stopped local history. Standalone files are playback-only and are not adopted as editable recording sessions.
+At 1×, playback advances one recorded edit every 150 ms, matching the [13 Sentences demo](https://byronm.com/13sentences.html). Original typing pauses take no playback time.
 
-Recorded HTML, images/embeds, named code fences (including plugin queries), and inline query syntax display as exact source with a short explanation. This conservative check runs before native rendering, so those constructs cannot automatically load resources or invoke their code-block processors through Replay. Unnamed fenced code renders normally. A failed Markdown preview also falls back to source while playback remains usable. Ordinary Markdown uses Obsidian's installed rendering pipeline; arbitrary third-party post-processor behavior is outside Replay's control. Attachments and other notes are not included as historical snapshots in a `.replay` file.
+The preview uses Obsidian's Reading view styling. You can scroll, select, and copy text, but cannot edit it or change task checkboxes. Internal links open separately, using the recording file's folder as context. Open the note's tab to write; playback never changes the live note.
 
-Hosted sharing, uploads, video export, and a standalone browser viewer are not implemented.
+Recorded HTML, images, embeds, named code blocks, and inline plugin expressions appear as source text with a brief explanation. This check happens before rendering to prevent those constructs from loading resources or running code-block processors through Replay. Unnamed code blocks render normally. If the Markdown preview fails, the source text remains available for playback.
 
-## Doomed highlighting
+Ordinary Markdown uses Obsidian's installed rendering pipeline. Other plugins can affect the result. Attachments and linked notes are not included in the recording.
 
-Doomed compares two recorded states: the selected step and the last saved step. It highlights deleted/replaced portions of the selected text in yellow, leaves unchanged spans clear, and never adds text from the final state. At the endpoint, or whenever those two strings are identical, nothing is highlighted. Moved and retyped text follows the same character comparison; it does not track character survival through edits.
+There is no separate export dialog. **Replay: Open recording file** opens the companion recording, and **Replay: Refresh recording file** updates it from stopped local history. Shared files are available for playback only. Hosted sharing, uploads, video export, and a standalone browser viewer are not implemented.
 
-Unrecorded live edits do not change the comparison target. After Resume and Stop, reopening history uses the new ending for every earlier step. Doomed starts off for each newly loaded replay and retains its setting while navigating that player.
+## Use Doomed highlights
 
-Very large or extensively changed comparisons may show **Doomed comparison is unavailable for this step** with plain historical text. Playback and navigation remain available. See the [comparison rules and limits](docs/RECORDING_FORMAT.md#playback-and-doomed) for deterministic alignment, Unicode granularity, and the implementation limits.
+Doomed compares the selected step with the final recorded step. In the formatted preview, it compares visible text and uses native highlight marks. Headings, emphasis, links, and authored highlights stay intact. Changes only to hidden Markdown syntax or link destinations do not highlight unchanged words.
 
-## File updates, migration, and conflicts
+It highlights text that is deleted or replaced in the final version, and never adds final-only text to an earlier step. At the final step, nothing is highlighted. The comparison does not track whether text was moved, deleted, or retyped between steps. When the preview uses source text, Doomed compares that source instead.
 
-Only an unchanged companion owned by that local recording can be updated automatically. Replay preserves unrelated or externally edited `.replay` files and reports a collision; move/rename the conflicting file and retry Stop or **Refresh recording file**. It never silently chooses another filename or overwrites imported history.
+The highlight color defaults to `#ffea00`. In **Settings → Replay → Doomed highlight color**, select a color or enter a six-digit hex value. Select **Reset to default** to restore yellow. Changes apply immediately to open recordings and are saved for future sessions. Text uses black or white for contrast. Authored Markdown highlights keep their theme styling.
 
-Renaming/moving a source note also moves its managed companion when the destination is free. Independently renaming/moving the companion detaches it as a portable snapshot; a later Start/Stop can create the original sibling again. Deleting the source leaves its recording file intact. Deleting a companion preserves the local log; the next explicit Start/Stop/refresh can recreate it.
+Edits made while recording is stopped do not change the comparison. After you resume and stop again, the new final step becomes the comparison target. Your Doomed on/off choice is shared across replay tabs and saved for other files and future Obsidian sessions, like playback speed. It defaults to off when no choice has been saved.
 
-Existing hidden recordings are migrated after layout readiness in queued batches. Their data is retained. Old `.replay.json` exports are left untouched: copy/rename one to `.replay` to open it, using a free destination. The JSON format remains version 1.
+Large comparisons may show **Doomed comparison is unavailable for this step**. Playback and navigation remain available. See the [comparison rules and limits](docs/RECORDING_FORMAT.md#playback-and-doomed) for details.
 
-## Local data
+## Manage recording files
 
-Recordings are stored under the plugin directory's `recordings/` folder, using the vault's configured configuration directory. They include the initial document and deleted or superseded writing. Start/Stop controls determine what is captured; editing while stopped leaves the recording unchanged.
+Replay updates only files it created and whose contents have not changed externally. If another file occupies the destination, move or rename that file, then retry saving or perform **Replay: Refresh recording file**. Replay never replaces an unrelated or imported recording.
 
-Writes are buffered: 500 ms idle, at most 2 seconds during continuous typing, or 50 pending steps. Stop confirms a successful save. Unload attempts a final save, but an abrupt process termination can lose the unflushed tail. Earlier complete records are validated and preserved.
+Renaming or moving a source note also moves its managed recording when the destination is free. Moving a `.replay` file independently keeps that copy available for playback; the next recording session can create a new companion. Deleting the source note leaves its recording intact. Deleting a recording preserves the local log; starting, stopping, or refreshing can recreate the file.
 
-Replay uses no network requests, telemetry, uploads, cloud accounts, or Node/Electron filesystem APIs. See [local storage and verification](docs/STORAGE.md) for the internal layout, retry behavior, and manual checks still needed.
+Existing local recordings are migrated after the vault opens, without discarding their data. Older `.replay.json` files are preserved. Copy or rename one to `.replay` to open it, using an unused destination. The JSON format remains version 1.
 
-## Release checks
+## Understand local storage
 
-Version metadata is aligned at `0.1.0` with Obsidian `1.7.2` as the declared minimum. After a production build, run `npm run check:release`; use `npm run check:release -- --tag 0.1.0` to validate an intended exact tag. CI runs tests, lint, build, and these checks before creating release assets. Required assets are `main.js`, `manifest.json`, and `styles.css`; generated bundles stay out of source control.
+Recordings are stored in the plugin's `recordings/` folder, inside the vault's configuration folder. They include the initial note and deleted or replaced text. Editing while recording is stopped leaves the recording unchanged.
 
-Review the remaining desktop/mobile/minimum-version checks in [PLAN.md](docs/PLAN.md) before treating the plugin as release-ready. A deliberate version change must align package, lockfile, manifest, and version map. The version helper stages nothing itself; `npm version` can still create Git commits/tags through npm's own behavior. Tag pushes, release publication, and catalog submission are separate actions and have not been performed.
+Writes are buffered until 500 ms after typing stops, after 2 seconds of continuous typing, or after 50 pending steps. Stopping recording confirms a successful save. Closing the plugin attempts a final save, but an abrupt application shutdown can lose changes that have not been saved yet. Earlier complete records are validated and preserved.
+
+Replay makes no network requests and uses no telemetry, uploads, cloud accounts, or Node.js/Electron file system APIs. See [local storage and verification](docs/STORAGE.md) for the layout, retry behavior, and remaining device checks.
+
+## Prepare a release
+
+Version metadata is aligned at `0.1.0`, with Obsidian `1.7.2` as the declared minimum. After a production build, run `npm run check:release`. Use `npm run check:release -- --tag 0.1.0` to validate an intended tag. CI runs tests, lint, build, and release checks. Required assets are `main.js`, `manifest.json`, and `styles.css`; generated bundles stay out of source control.
+
+Review the remaining desktop, mobile, and minimum-version checks in the [implementation plan](docs/PLAN.md) before releasing. A version change must align the package, lockfile, manifest, and version map. The version helper does not stage files, but `npm version` can create Git commits and tags. Tag pushes, release publication, and catalog submission are separate actions and have not been performed.

@@ -5,6 +5,46 @@ import { DoomedPresentation, DOOMED_CACHE_LIMITS } from '../../src/replay/doomed
 import { compareDoomed, type DoomedComparison } from '../../src/replay/doomed';
 import { FakeClock } from '../support/storage';
 import { loadFixture, recording, spliceStep } from '../recording/helpers';
+import { ReplayPreferences } from '../../src/settings';
+
+void test('shared Doomed choice survives rebinding and reloads without leaking comparisons or changing playback', async () => {
+	let saved: unknown = { playbackRate: 2 };
+	const preferences = new ReplayPreferences(saved, async (data) => { saved = data; }, () => assert.fail('Unexpected save failure'));
+	const clock = new FakeClock();
+	const first = new ReplayController(recording('cat', [spliceStep('cat', 0, 3, 'dog')]), clock);
+	const second = new ReplayController(recording('cat', [spliceStep('cat', 0, 3, 'cats')]), clock);
+	const a = new DoomedPresentation(undefined, preferences);
+	const b = new DoomedPresentation(undefined, preferences);
+	a.bind(first); b.bind(second);
+	first.play();
+	const before = first.state;
+	a.toggle();
+	assert.equal(a.display.enabled, true);
+	assert.equal(b.display.enabled, true);
+	assert.deepEqual(a.display.ranges, [{ from: 0, to: 3 }]);
+	assert.deepEqual(b.display.ranges, []);
+	assert.deepEqual(first.state, before);
+	assert.equal(clock.size, 1);
+	a.bind(undefined);
+	assert.equal(a.display.enabled, false);
+	a.toggle();
+	assert.equal(preferences.doomedEnabled, true);
+	a.bind(second);
+	assert.equal(a.display.enabled, true);
+	assert.deepEqual(a.display.ranges, []);
+	a.dispose();
+	await preferences.flush();
+	const restored = new ReplayPreferences(saved, async () => undefined, () => assert.fail('Unexpected save failure'));
+	const reopened = new DoomedPresentation(undefined, restored);
+	reopened.bind(first);
+	assert.equal(reopened.display.enabled, true);
+	assert.deepEqual(reopened.display.ranges, [{ from: 0, to: 3 }]);
+	b.toggle();
+	assert.equal(preferences.doomedEnabled, false);
+	b.bind(first);
+	assert.equal(b.display.enabled, false);
+	first.dispose(); second.dispose();
+});
 
 void test('toggling preserves paused/playing replay state, schedules and pending seeks', () => {
 	const clock = new FakeClock();

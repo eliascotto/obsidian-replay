@@ -1,5 +1,6 @@
 import type { ReplayController } from './controller';
 import { compareDoomed, type DoomedComparison, type DoomedRange } from './doomed';
+import type { ReplayPreferences } from '../settings';
 
 export const DOOMED_CACHE_LIMITS = Object.freeze({ entries: 16, ranges: 4096 });
 export interface DoomedDisplay {
@@ -10,7 +11,7 @@ export interface DoomedDisplay {
 type Comparison = DoomedComparison | { readonly status: 'unavailable'; readonly reason: 'error' };
 const noRanges: readonly DoomedRange[] = Object.freeze([]);
 
-/** Transient presentation bound to one player at a time; no timers, subscriptions or vault access. */
+/** Per-player comparisons; shared preferences own the persisted toggle when provided. */
 export class DoomedPresentation {
 	private player: ReplayController | undefined;
 	private enabled = false;
@@ -18,7 +19,7 @@ export class DoomedPresentation {
 	private rangeCount = 0;
 	private last: { sequence: number; result: Comparison } | undefined;
 
-	constructor(private compare = compareDoomed) {}
+	constructor(private compare = compareDoomed, private preferences?: ReplayPreferences) {}
 
 	bind(player: ReplayController | undefined): void {
 		if (player === this.player) return;
@@ -26,10 +27,14 @@ export class DoomedPresentation {
 		this.player = player;
 	}
 
-	toggle(): void { if (this.player) this.enabled = !this.enabled; }
+	toggle(): void {
+		if (!this.player) return;
+		if (this.preferences) this.preferences.setDoomedEnabled(!this.preferences.doomedEnabled);
+		else this.enabled = !this.enabled;
+	}
 
 	get display(): DoomedDisplay {
-		if (!this.enabled || !this.player) return { enabled: false, ranges: noRanges, message: '' };
+		if (!(this.preferences?.doomedEnabled ?? this.enabled) || !this.player) return { enabled: false, ranges: noRanges, message: '' };
 		const state = this.player.state;
 		const result = this.result(state.sequence, state.text);
 		return {

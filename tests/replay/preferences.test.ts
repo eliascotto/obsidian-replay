@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ReplayPreferences } from '../../src/settings';
+import { DEFAULT_DOOMED_COLOR, ReplayPreferences } from '../../src/settings';
+import { highlightTextColor } from '../../src/ui/highlight-color';
 import { PLAYBACK_RATES } from '../../src/replay/types';
 import { ReplayFileController } from '../../src/replay/file-controller';
 import { serializeRecording } from '../../src/recording/format';
@@ -8,6 +9,117 @@ import { loadFixture } from '../recording/helpers';
 import { deferred, FakeClock } from '../support/storage';
 
 const bytes = serializeRecording(loadFixture('resume'));
+
+void test('Doomed restores only saved booleans and defaults off without writing', () => {
+	const unexpectedSave = () => { throw new Error('Loading preferences must not write'); };
+	for (const saved of [undefined, null, [], {}, { doomedEnabled: 'true' }, { doomedEnabled: 1 }, { doomedEnabled: null }]) {
+		assert.equal(new ReplayPreferences(saved, unexpectedSave, unexpectedSave).doomedEnabled, false);
+	}
+	for (const enabled of [true, false]) {
+		assert.equal(new ReplayPreferences({ doomedEnabled: enabled }, unexpectedSave, unexpectedSave).doomedEnabled, enabled);
+	}
+});
+
+void test('both Doomed choices survive sessions and preserve unrelated preferences', async () => {
+	let saved: unknown = { playbackRate: 2, doomedHighlightColor: '#ffea00', otherSetting: 'preserve me' };
+	for (const enabled of [true, false]) {
+		const preferences = new ReplayPreferences(saved, async (data) => { saved = data; }, () => assert.fail('Unexpected save failure'));
+		let updates = 0;
+		const unsubscribe = preferences.subscribe(() => { updates++; });
+		preferences.setDoomedEnabled(enabled);
+		preferences.setDoomedEnabled(enabled);
+		assert.equal(updates, 1);
+		unsubscribe();
+		await preferences.flush();
+		const restored = new ReplayPreferences(saved, async () => undefined, () => assert.fail('Unexpected save failure'));
+		assert.equal(restored.doomedEnabled, enabled);
+		assert.equal(restored.playbackRate, 2);
+		assert.equal(restored.doomedHighlightColor, '#ffea00');
+		assert.deepEqual(saved, { playbackRate: 2, doomedHighlightColor: '#ffea00', otherSetting: 'preserve me', doomedEnabled: enabled });
+	}
+});
+
+void test('ordered toggle, speed, and color saves recover after a failure without reverting the current choice', async () => {
+	const gate = deferred();
+	const writes: Record<string, unknown>[] = [];
+	let failures = 0;
+	const preferences = new ReplayPreferences(undefined, async (data) => {
+		writes.push(data);
+		if (writes.length === 1) await gate.promise;
+	}, () => { failures++; });
+	preferences.setDoomedEnabled(true);
+	preferences.setRate(2);
+	preferences.setDoomedColor('#00aaff');
+	await Promise.resolve();
+	gate.reject(new Error('Save failed'));
+	await preferences.flush();
+	assert.equal(failures, 1);
+	assert.equal(preferences.doomedEnabled, true);
+	assert.deepEqual(writes[2], { doomedEnabled: true, playbackRate: 2, doomedHighlightColor: '#00aaff' });
+	preferences.setDoomedEnabled(false);
+	await preferences.flush();
+	assert.deepEqual(writes[3], { doomedEnabled: false, playbackRate: 2, doomedHighlightColor: '#00aaff' });
+	assert.throws(() => preferences.setDoomedEnabled('true' as unknown as boolean), RangeError);
+});
+
+void test('highlight colors default safely and normalize saved hex without writing', () => {
+	const unexpectedSave = () => { throw new Error('Loading preferences must not write'); };
+	for (const value of [undefined, null, 42, '#fff', '#12345678', 'red', '#gggggg', 'var(--text-normal)', '#123456; color: red']) {
+		const preferences = new ReplayPreferences({ doomedHighlightColor: value }, unexpectedSave, unexpectedSave);
+		assert.equal(preferences.doomedHighlightColor, DEFAULT_DOOMED_COLOR);
+	}
+	const preferences = new ReplayPreferences({ doomedHighlightColor: ' #AaBBcc ' }, unexpectedSave, unexpectedSave);
+	assert.equal(preferences.doomedHighlightColor, '#aabbcc');
+});
+
+void test('color changes notify open views, preserve speed, and survive a new session', async () => {
+	let saved: unknown;
+	let notifications = 0;
+	const preferences = new ReplayPreferences({ playbackRate: 2, otherSetting: true }, async (data) => { saved = data; },
+		() => assert.fail('Unexpected save failure'));
+	const unsubscribe = preferences.subscribe(() => { notifications++; });
+	preferences.setDoomedColor('#00AAff');
+	preferences.setDoomedColor('#00aaff');
+	assert.equal(notifications, 1);
+	assert.equal(preferences.playbackRate, 2);
+	await preferences.flush();
+	assert.deepEqual(saved, { playbackRate: 2, otherSetting: true, doomedHighlightColor: '#00aaff' });
+	const restored = new ReplayPreferences(saved, async () => undefined, () => assert.fail('Unexpected save failure'));
+	assert.equal(restored.doomedHighlightColor, '#00aaff');
+	assert.equal(restored.playbackRate, 2);
+	for (const value of ['', '#fff', '#ffea00; color: red', 'rgb(0,0,0)']) assert.throws(() => preferences.setDoomedColor(value), RangeError);
+	assert.equal(preferences.doomedHighlightColor, '#00aaff');
+	unsubscribe();
+	preferences.setDoomedColor(DEFAULT_DOOMED_COLOR);
+	await preferences.flush();
+	assert.equal(notifications, 1);
+});
+
+void test('interleaved color and speed writes retain the latest values after a failed save', async () => {
+	const gate = deferred();
+	const writes: Record<string, unknown>[] = [];
+	let failures = 0;
+	const preferences = new ReplayPreferences(undefined, async (data) => {
+		writes.push(data);
+		if (writes.length === 1) await gate.promise;
+	}, () => { failures++; });
+	preferences.setDoomedColor('#00aaff');
+	preferences.setRate(2);
+	preferences.setDoomedColor('#111111');
+	await Promise.resolve();
+	assert.equal(writes.length, 1);
+	gate.reject(new Error('Save failed'));
+	await preferences.flush();
+	assert.equal(failures, 1);
+	assert.deepEqual(writes[2], { doomedHighlightColor: '#111111', playbackRate: 2 });
+	assert.equal(preferences.doomedHighlightColor, '#111111');
+});
+
+void test('highlight text stays readable on bright and dark custom backgrounds', () => {
+	for (const color of ['#ffea00', '#ffffff', '#00ff00', '#00aaff']) assert.equal(highlightTextColor(color), '#000000');
+	for (const color of ['#000000', '#111111', '#0000ff']) assert.equal(highlightTextColor(color), '#ffffff');
+});
+
 function player(controller: ReplayFileController) {
 	const state = controller.state;
 	assert.equal(state.phase, 'ready');

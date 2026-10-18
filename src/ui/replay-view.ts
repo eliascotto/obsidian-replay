@@ -4,6 +4,7 @@ import { ReplayDocument } from './replay-document';
 import { PLAYBACK_RATES } from '../replay/types';
 import { DoomedPresentation } from '../replay/doomed-presentation';
 import { createIconButton, updateIconButton } from './icon-button';
+import type { ReplayPreferences } from '../settings';
 
 export const REPLAY_VIEW_TYPE = 'replay-history';
 
@@ -16,14 +17,16 @@ export class ReplayView extends FileView {
 	private rate!: HTMLSelectElement;
 	private timeline!: HTMLInputElement;
 	private doomedButton!: HTMLButtonElement;
-	private doomed = new DoomedPresentation();
+	private doomed: DoomedPresentation;
 	private unsubscribe: (() => void) | undefined;
+	private unsubscribePreferences: (() => void) | undefined;
 	private ready = false;
 
 	constructor(leaf: WorkspaceLeaf, private replay: ReplayFileController,
-		private legacyFile: (path: string) => Promise<string>, private disposed: () => void,
+		private legacyFile: (path: string) => Promise<string>, private disposed: () => void, private preferences: ReplayPreferences,
 	) {
 		super(leaf);
+		this.doomed = new DoomedPresentation(undefined, preferences);
 		const scope = this.scope = new Scope(this.app.scope);
 		for (const key of [' ', 'ArrowLeft', 'ArrowRight']) {
 			const handler = scope.register([], key, (event) => this.handleKey(event));
@@ -49,16 +52,19 @@ export class ReplayView extends FileView {
 		} });
 		this.rate = controls.createEl('select', { cls: 'replay-rate', attr: { 'aria-label': 'Playback speed' } });
 		for (const rate of PLAYBACK_RATES) this.rate.createEl('option', { value: String(rate), text: `${rate}×` });
-		this.doomedButton = createIconButton(controls, 'diff', 'Doomed: highlight text that differs from the final recorded step');
+		this.doomedButton = createIconButton(controls, 'bug', 'Doomed: highlight what differs from the final version');
+		this.doomedButton.addClass('replay-doomed-button');
 		this.doomedButton.setAttribute('aria-pressed', 'false');
-		this.document = this.addChild(new ReplayDocument(this.app, this.contentEl));
+		this.document = this.addChild(new ReplayDocument(this.app, this.contentEl, this.preferences));
 		this.registerDomEvent(this.play, 'click', () => this.player()?.togglePlayback());
 		this.registerDomEvent(this.previous, 'click', () => this.player()?.previous());
 		this.registerDomEvent(this.next, 'click', () => this.player()?.next());
 		this.registerDomEvent(this.rate, 'change', () => this.replay.setRate(Number(this.rate.value)));
 		this.registerDomEvent(this.timeline, 'input', () => this.player()?.requestSeek(Number(this.timeline.value)));
 		this.registerDomEvent(this.timeline, 'change', () => this.player()?.commitSeek());
-		this.registerDomEvent(this.doomedButton, 'click', () => { this.doomed.toggle(); this.render(); });
+		this.registerDomEvent(this.doomedButton, 'click', () => this.doomed.toggle());
+		this.unsubscribePreferences = this.preferences.subscribe(() => this.render());
+		this.register(() => this.unsubscribePreferences?.());
 		this.unsubscribe = this.replay.subscribe(() => this.render());
 		this.ready = true;
 		this.render();
@@ -108,7 +114,7 @@ export class ReplayView extends FileView {
 		const display = this.doomed.display;
 		this.doomedButton.disabled = !valid;
 		this.doomedButton.setAttribute('aria-pressed', String(display?.enabled ?? false));
-		if (valid && player && status.path) this.document.show(player, { text: state.text, path: status.path }, display);
+		if (valid && player && status.path) this.document.show(player, { text: state.text, path: status.path, finalText: player.finalText }, display);
 		else this.document.clear();
 	}
 
@@ -132,6 +138,8 @@ export class ReplayView extends FileView {
 		this.ready = false;
 		this.unsubscribe?.();
 		this.unsubscribe = undefined;
+		this.unsubscribePreferences?.();
+		this.unsubscribePreferences = undefined;
 		this.doomed.dispose();
 		this.removeChild(this.document);
 		this.replay.dispose();

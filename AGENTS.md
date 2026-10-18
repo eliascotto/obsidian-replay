@@ -114,10 +114,14 @@ Follow Obsidian's **Developer Policies** and **Plugin Guidelines**. In particula
 
 ## UX & copy guidelines (for UI text, commands, settings)
 
+- Follow the [Obsidian style guide](https://obsidian.md/help/style-guide) for UI text and documentation. Use American English and direct instructions.
 - Prefer sentence case for headings, buttons, and titles.
 - Use clear, action-oriented imperatives in step-by-step copy.
 - Use **bold** to indicate literal UI labels. Prefer "select" for interactions.
 - Use arrow notation for navigation: **Settings → Community plugins**.
+- Write keyboard shortcuts as code, with full key names and no spaces around `+`: `Command+Shift+R` (macOS), `Ctrl+Shift+R` (Windows and Linux).
+- Use "keyboard shortcut" except for the **Hotkeys** settings feature. Prefer "active note," "note name," and "folder."
+- Include desktop and mobile instructions when their controls differ. Record unverified device behavior explicitly.
 - Keep in-app strings short, consistent, and free of jargon.
 
 ## Performance
@@ -266,4 +270,4 @@ this.registerInterval(
 - API documentation: https://docs.obsidian.md
 - Developer policies: https://docs.obsidian.md/Developer+policies
 - Plugin guidelines: https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines
-- Style guide: https://help.obsidian.md/style-guide
+- Style guide: https://obsidian.md/help/style-guide

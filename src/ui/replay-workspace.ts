@@ -28,7 +28,7 @@ export class ReplayWorkspace {
 				return source !== null && !['absent', 'stopped'].includes(recordings.status(source));
 			}, preferences);
 			this.players.add(player);
-			return new ReplayView(leaf, player, (path) => this.ensure(path), () => this.players.delete(player));
+			return new ReplayView(leaf, player, (path) => this.ensure(path), () => this.players.delete(player), preferences);
 		});
 		plugin.registerExtensions(['replay'], REPLAY_VIEW_TYPE);
 		plugin.register(recordings.subscribe(() => {

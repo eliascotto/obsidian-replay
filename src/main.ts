@@ -9,11 +9,13 @@ import { ReplayWorkspace } from './ui/replay-workspace';
 import { registerCommands } from './commands/register-commands';
 import { ArtifactPublisher } from './artifacts/publisher';
 import { ObsidianArtifactAdapter } from './artifacts/obsidian-adapter';
+import { ReplaySettingsTab } from './ui/settings-tab';
 
 export default class ReplayPlugin extends Plugin {
 	async onload(): Promise<void> {
 		const preferences = new ReplayPreferences(await this.loadData(), (data) => this.saveData(data),
-			() => { new Notice('Could not save the playback speed. Your selection still applies until Obsidian closes.'); });
+			() => { new Notice('Could not save settings. Your changes apply until you close Obsidian.'); });
+		this.addSettingTab(new ReplaySettingsTab(this, preferences));
 		const root = recordingRoot(this);
 		const storage = new ObsidianStorageAdapter(this.app.vault.adapter);
 		const store = new RecordingStore(storage, root);

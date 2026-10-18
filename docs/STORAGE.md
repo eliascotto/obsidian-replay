@@ -1,3 +1,7 @@
+---
+description: Describe local recording storage, save recovery, and verification coverage.
+---
+
 # Local recordings and verification
 
 ## Portable companion files
@@ -16,7 +20,7 @@ The portable contract remains [RECORDING_FORMAT.md](RECORDING_FORMAT.md). Intern
 
 ## Layout
 
-The root is `<plugin-directory>/recordings/`. Resolve the plugin directory from the manifest, or from the vault's configured configuration directory and the stable plugin ID. No note identifiers are inserted into Markdown.
+The root is `<plugin-directory>/recordings/`. Resolve the plugin folder from the manifest, or from the vault's configured configuration folder and the stable plugin ID. No note identifiers are inserted into Markdown.
 
 | File | Content |
 | --- | --- |
@@ -27,7 +31,7 @@ The root is `<plugin-directory>/recordings/`. Resolve the plugin directory from 
 
 IDs contain only letters, digits, underscores, and hyphens. The index cannot associate the same ID with multiple notes. The internal `storageVersion` is distinct from the portable `formatVersion`.
 
-The index is published after initial data, the empty stream, and metadata are created. A failed creation can retry the same in-memory identity; an existing published recording is loaded and validated, never reinitialized. Unindexed partial creation directories are not presented as completed recordings. General orphan recovery and schema migrations remain outside the MVP.
+The index is published after initial data, the empty stream, and metadata are created. A failed creation can retry the same in-memory identity; an existing published recording is loaded and validated, never reinitialized. Unindexed partial creation folders are not presented as completed recordings. General orphan recovery and schema migrations remain outside the MVP.
 
 ## Reads, writes, and retry
 
@@ -43,7 +47,7 @@ The Obsidian adapter uses its atomic `process` operation to replace existing sma
 
 A rejected append has an uncertain outcome. Retry reloads the file, compares complete stored steps with pending sequences, repairs an incomplete tail, and appends only missing records. A metadata failure after a successful append does not duplicate that append. Conflicting stored/queued records remain errors. Failed batches remain in memory for retry; a failure closes capture rather than growing an unbounded queue.
 
-File/folder renames remap index paths on directory boundaries while retaining IDs. Pending rename operations are retried before new lifecycle operations complete. No external editing, sync reconciliation, or cross-device identity merging is attempted.
+File/folder renames remap index paths on folder boundaries while retaining IDs. Pending rename operations are retried before new lifecycle operations complete. No external editing, sync reconciliation, or cross-device identity merging is attempted.
 
 ## Recording boundaries
 
@@ -55,9 +59,9 @@ Repeated Start does not create another recording. Start while a save/error remai
 
 ## Stopped replay snapshots
 
-A stopped snapshot carries its stable recording ID, current note path, and an in-memory lifecycle revision. Start/Resume invalidates the revision synchronously before capture opens. The loader checks stopped readiness and the revision again after asynchronous storage work, so an old load cannot become playable after a complete Start/Stop cycle. File/folder rename invalidates old paths and rebinds replay by recording identity. These tokens are local runtime state and do not change the portable format.
+A stopped snapshot carries its stable recording ID, source note path, and an in-memory lifecycle revision. Start/Resume invalidates the revision synchronously before capture opens. The loader checks stopped readiness and the revision again after asynchronous storage work, so an old load cannot become playable after a complete Start/Stop cycle. File/folder rename invalidates old paths and rebinds replay by recording identity. These tokens are local runtime state and do not change the portable format.
 
-The replay model owns an immutable validated copy of the recording. It reconstructs and navigates in memory, without writing the live editor or appending history. One cancelable playback timer advances at a steady rate; a separate cancelable 16 ms seek schedule coalesces timeline input. Closing, rebinding, resuming, and unloading cancel both. The Obsidian view renders exact source text through `textContent`.
+The replay model owns an immutable validated copy of the recording. It reconstructs and navigates in memory, without writing the live editor or appending history. One cancelable playback timer advances at a steady rate; a separate cancelable 16 ms seek schedule coalesces timeline input. Closing, rebinding, resuming, and unloading cancel both. The view renders Markdown through Obsidian's renderer, with a source-text fallback. See the [playback and Doomed reference](RECORDING_FORMAT.md#playback-and-doomed) for rendering and comparison rules.
 
 ## Verification status
 
@@ -77,9 +81,10 @@ The full desktop matrix, all-rate/pause/drag combinations, undo-state comparison
 
 Read-only playback and timeline controls are implemented in milestone 3; the remaining device checklist stays open in [PLAN.md](PLAN.md). Doomed rendering is implemented in milestone 4 with its own desktop smoke test; export is implemented in milestone 5 with create-new/readback verification. Doomed compares in memory and writes no history or format fields. Before release, verify the complete recording/replay journey on desktop and mobile; automated suites alone do not establish UI integration.
 
+## Historical export verification
 
-## Export verification
+The following results describe the earlier export dialog. The current workflow creates and updates `.replay` files automatically; see the [implementation plan](PLAN.md#6-native-replay-files-and-simpler-recording-controls).
 
-Exports are separate new vault files, not copies of the internal recording directory. Preparation uses the same stopped-snapshot revision boundary as replay. Destination checks and this plugin's serialized create-new operations precede verification of the exact saved JSON; errors never remove/replace the source or a possibly created destination. No export metadata or highlight spans are written into the internal history.
+Exports are separate new vault files, not copies of the internal recording folder. Preparation uses the same stopped-snapshot revision boundary as replay. Destination checks and this plugin's serialized create-new operations precede verification of the exact saved JSON; errors never remove/replace the source or a possibly created destination. No export metadata or highlight spans are written into the internal history.
 
-Desktop export smoke test (2026-10-17, macOS, Obsidian 1.13.7): all four entry points opened the source-bound dialog. Cancel created no file; traversal disabled Export; a repeated destination reported a collision. Exporting a playing, Doomed-enabled history paused it at step 14 while saving the full endpoint at step 15. In an isolated directory, a consumer supplied only the saved JSON reconstructed all 16 states, reversed all 15 steps, and computed Doomed for each state. Hashes confirmed the live note and internal recording files were unchanged. The polished build also exported an empty, initial-only recording with zero steps through keyboard submission after a reload. Mobile, minimum-version, and the extended device matrix remain unverified.
+Desktop export smoke test (2026-10-17, macOS, Obsidian 1.13.7): all four entry points opened the source-bound dialog. Cancel created no file; traversal disabled Export; a repeated destination reported a collision. Exporting a playing, Doomed-enabled history paused it at step 14 while saving the full endpoint at step 15. In an isolated folder, a consumer supplied only the saved JSON reconstructed all 16 states, reversed all 15 steps, and computed Doomed for each state. Hashes confirmed the live note and internal recording files were unchanged. The polished build also exported an empty, initial-only recording with zero steps through keyboard submission after a reload. Mobile, minimum-version, and the extended device matrix remain unverified.

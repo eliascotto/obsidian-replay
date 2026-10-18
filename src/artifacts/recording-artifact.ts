@@ -17,10 +17,10 @@ export function prepareArtifact(recording: RecordingFile): PreparedArtifact {
 }
 
 export function verifyArtifact(text: string, expected: PreparedArtifact): void {
-	if (text !== expected.json) throw new Error('Export readback differs from the prepared recording.');
+	if (text !== expected.json) throw new Error('The saved recording does not match the expected text.');
 	const recording = parseRecording(text);
 	if (recording.initialText !== expected.initialText || recording.steps.length !== expected.lastSequence ||
 		getStateAt(recording, recording.steps.length) !== expected.finalText) {
-		throw new Error('Export does not reconstruct the prepared recording.');
+		throw new Error('The saved recording does not reproduce the recorded changes.');
 	}
 }
