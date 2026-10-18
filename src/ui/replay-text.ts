@@ -36,10 +36,7 @@ export function renderReplayText(target: TextTarget, text: string, ranges: reado
 	let from = 0;
 	for (const range of ranges) {
 		if (from < range.from) fragment.appendChild(document.createTextNode(text.slice(from, range.from)));
-		const span = document.createElement('span');
-		span.className = 'replay-doomed-text';
-		span.textContent = text.slice(range.from, range.to);
-		fragment.appendChild(span);
+		fragment.createSpan({ cls: 'replay-doomed-text', text: text.slice(range.from, range.to) });
 		from = range.to;
 	}
 	if (from < text.length) fragment.appendChild(document.createTextNode(text.slice(from)));

@@ -86,8 +86,7 @@ export class ReplayDocument extends Component {
 	private source(text: string, message: string, display?: DoomedDisplay): void {
 		const scroll = this.host.scrollTop;
 		this.host.removeClass('markdown-preview-view', 'markdown-rendered', 'is-readable-line-width');
-		const pre = this.host.ownerDocument.createElement('pre');
-		pre.className = 'replay-source';
+		const pre = this.host.ownerDocument.createDocumentFragment().createEl('pre', { cls: 'replay-source' });
 		const code = pre.createEl('code');
 		try { renderReplayText(code, text, display?.ranges); }
 		catch {
@@ -101,8 +100,7 @@ export class ReplayDocument extends Component {
 
 	private start(snapshot: RenderSnapshot): RenderTask {
 		const component = this.addChild(new Component());
-		const stage = this.host.ownerDocument.createElement('div');
-		stage.className = 'markdown-preview-sizer markdown-preview-section';
+		const stage = this.createStage();
 		let ready: Promise<void>;
 		let message = '';
 		try { ready = MarkdownRenderer.render(this.app, snapshot.text, stage, snapshot.path, component); }
@@ -135,8 +133,7 @@ export class ReplayDocument extends Component {
 	private finalText(snapshot: Snapshot): Promise<string> {
 		if (!this.finalPreview) {
 			const component = this.addChild(new Component());
-			const stage = this.host.ownerDocument.createElement('div');
-			stage.className = 'markdown-preview-sizer markdown-preview-section';
+			const stage = this.createStage();
 			let disposed = false;
 			const dispose = () => {
 				if (disposed) return;
@@ -153,6 +150,11 @@ export class ReplayDocument extends Component {
 			this.finalPreview = { ready, dispose };
 		}
 		return this.finalPreview.ready;
+	}
+
+	private createStage(): HTMLDivElement {
+		// Keep pending renders detached and in the host's document, including pop-out windows.
+		return this.host.ownerDocument.createDocumentFragment().createDiv({ cls: 'markdown-preview-sizer markdown-preview-section' });
 	}
 
 	private clearFinalPreview(): void {

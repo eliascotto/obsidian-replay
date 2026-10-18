@@ -34,13 +34,13 @@ For mobile, build on a desktop computer and copy the same files into your mobile
 
 ## Record and replay
 
-1. Open a note in editing view and run **Replay: Toggle recording** from the command palette. On desktop, you can also use the ribbon button or press `Command+Shift+R` (macOS) or `Ctrl+Shift+R` (Windows and Linux).
+1. Open a note in editing view and run **Replay: Toggle recording** from the command palette. On desktop, you can also use the ribbon button.
 2. Write, then use the same command to stop. Wait for **Recording stopped** before sharing.
 3. Open the `.replay` file beside your note to play, pause, step through edits, or adjust playback speed.
 
 Starting again continues the same recording. Edits made while recording is stopped appear as one step when you resume. Recording never starts automatically when you reopen Obsidian. If saving fails, resolve the reported problem and use the toggle command to retry.
 
-Change the keyboard shortcut in **Settings → Hotkeys** by searching for **Replay: Toggle recording**.
+Assign a keyboard shortcut in **Settings → Hotkeys** by searching for **Replay: Toggle recording**. Replay does not assign a default shortcut.
 
 ## Share a recording
 

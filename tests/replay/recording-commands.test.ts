@@ -17,9 +17,9 @@ function commands(start: boolean, stop: boolean) {
 	return { registered, calls };
 }
 
-void test('one editable default belongs to the toggle; legacy command IDs keep their original actions', () => {
+void test('commands have no default shortcuts; legacy command IDs keep their original actions', () => {
 	const { registered, calls } = commands(true, true);
-	assert.deepEqual(registered.get('toggle-recording')?.hotkeys, [{ modifiers: ['Mod', 'Shift'], key: 'R' }]);
+	assert.equal(registered.get('toggle-recording')?.hotkeys, undefined);
 	assert.equal(registered.get('start-recording')?.hotkeys, undefined);
 	assert.equal(registered.get('stop-recording')?.hotkeys, undefined);
 	registered.get('start-recording')!.checkCallback!(false);

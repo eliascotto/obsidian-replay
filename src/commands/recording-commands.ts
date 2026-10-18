@@ -1,11 +1,10 @@
 import type { Plugin } from 'obsidian';
 import type { RecordingControls } from '../ui/recording-controls';
 
-/** One toggle shortcut; keep legacy commands so existing user bindings still work. */
+/** Keep stable command IDs so existing user bindings still work. */
 export function registerRecordingCommands(plugin: Plugin, controls: RecordingControls): void {
 	plugin.addCommand({
 		id: 'toggle-recording', name: 'Toggle recording',
-		hotkeys: [{ modifiers: ['Mod', 'Shift'], key: 'R' }],
 		checkCallback: (checking) => {
 			if (!controls.canStop() && !controls.canStart()) return false;
 			if (!checking) controls.toggle();

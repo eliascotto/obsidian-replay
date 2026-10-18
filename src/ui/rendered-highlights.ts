@@ -56,10 +56,7 @@ export function highlightRenderedDifference(root: HTMLElement, finalText: string
 		let cursor = 0;
 		for (const range of ranges) {
 			fragment.appendChild(root.ownerDocument.createTextNode(text.slice(cursor, range.from)));
-			const mark = root.ownerDocument.createElement('mark');
-			mark.className = 'replay-doomed-mark';
-			mark.textContent = text.slice(range.from, range.to);
-			fragment.appendChild(mark);
+			fragment.createEl('mark', { cls: 'replay-doomed-mark', text: text.slice(range.from, range.to) });
 			cursor = range.to;
 		}
 		fragment.appendChild(root.ownerDocument.createTextNode(text.slice(cursor)));

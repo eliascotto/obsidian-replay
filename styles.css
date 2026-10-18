@@ -198,7 +198,6 @@ button.replay-icon-button:disabled {
 	background-color: var(--replay-doomed-color, #ffea00);
 	color: var(--replay-doomed-text-color, #000000);
 	border-radius: 2px;
-	box-decoration-break: clone;
 }
 
 button.replay-icon-button[aria-pressed="true"] {

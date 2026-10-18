@@ -12,6 +12,16 @@ export class TestNode {
 	get tagName(): string { return this.nodeName; }
 	get childNodes(): TestNode[] { return this.children; }
 	setAttribute(name: string, value: string): void { this.attributes.set(name, value); }
+	createEl(name: string, options: { cls?: string; text?: string } = {}): TestNode {
+		return this.appendElement(name, options);
+	}
+	createSpan(options: { cls?: string; text?: string } = {}): TestNode { return this.appendElement('span', options); }
+	private appendElement(name: string, options: { cls?: string; text?: string }): TestNode {
+		const node = this.ownerDocument.createElement(name);
+		node.className = options.cls ?? '';
+		if (options.text !== undefined) node.textContent = options.text;
+		return this.appendChild(node);
+	}
 	matches(selector: string): boolean {
 		return selector.split(', ').some((part) => {
 			if (part.startsWith('.')) return this.className.split(' ').includes(part.slice(1));

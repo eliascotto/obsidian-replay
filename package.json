@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-replay",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "Record, replay, and export the writing process in Obsidian notes.",
 	"main": "main.js",
 	"type": "module",
